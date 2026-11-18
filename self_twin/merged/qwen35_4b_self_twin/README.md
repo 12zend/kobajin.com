@@ -1,0 +1,1 @@
+未作成。評価合格後に同一revisionの元モデルへadapterをmergeし、別出力としてSafetensors形式で保存する。元モデルとadapterは保持する。

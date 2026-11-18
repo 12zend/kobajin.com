@@ -1,0 +1,108 @@
+status: pilots_rebenchmarked_with_eos_owner_review_pending
+
+base_model:
+  repo_id: Qwen/Qwen3.5-4B
+  kind: post_trained
+  revision: 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a
+  required_format: original_safetensors
+  forbidden_substitution: Qwen/Qwen3.5-4B-Base
+  local_4bit_conversion_is_training_base: false
+
+runtime:
+  framework: transformers_peft_trl
+  transformers_major: 5
+  device: mps_or_cuda_after_runtime_probe
+  dtype: bfloat16
+  quantization: none
+  vision_encoder_trainable: false
+
+lora:
+  ranks_to_compare: [8, 16]
+  optional_rank: 32
+  alpha: 16
+  dropout: 0.05
+  bias: none
+  target_modules: resolve_from_loaded_model_linear_layers
+  exclusions:
+    - vision_tower
+    - image_projector
+    - embeddings
+    - lm_head
+  inspect_and_log_actual_targets_before_training: true
+
+optimization:
+  learning_rate: 0.00005
+  epochs: 2
+  warmup_ratio: 0.03
+  weight_decay: 0.01
+  per_device_train_batch_size: 1
+  optimizer: adamw_torch
+  gradient_checkpointing: true
+  max_sequence_length: derive_from_exact_tokenizer_length_distribution
+  first_pilot_examples: 1000
+  pilot_validation_examples: 200
+  num_train_epochs: 2
+  eval_strategy: epoch
+  save_strategy: epoch
+  save_total_limit: 2
+most_recent_pilot:
+  rank: 8
+  examples: 1000
+  epochs: 1
+  learning_rate: 0.00001
+  enable_thinking: false
+  low_weight_sample_rate: 0.10
+  output_dir: ../adapter/experiment-r8-lowweight10-lr1e5-1000
+  status: completed
+  train_loss: 4.114
+  validation_loss: 3.998
+  conversation_only_char_rouge_l_f1:
+    base: 0.0901
+    lora: 0.0498
+    lora_plus_rag: 0.0498
+
+last_completed_pilot:
+  rank: 8
+  examples: 5000
+  train_loss: 3.7836
+  validation_loss: 3.7915
+  char_rouge_l_f1:
+    base: 0.0912
+    lora: 0.0636
+    lora_plus_rag: 0.0728
+
+matched_rank_comparison_1000_examples:
+  seed: 42
+  validation_loss:
+    rank_8: 3.9895
+    rank_16: 3.9916
+  char_rouge_l_f1:
+    base: 0.0912
+    rank_8_lora: 0.0449
+    rank_16_lora: 0.0447
+  conversation_only_char_rouge_l_f1:
+    base: 0.0901
+    rank_8_lora: 0.0304
+    rank_16_lora: 0.0310
+
+loss:
+  assistant_only: true
+  verify_mask_before_training: true
+  enable_thinking: false
+  current_local_chat_template_has_generation_markers: false
+  use_current_trl_qwen35_training_template_or_custom_offset_mask: true
+  fail_if_user_prompt_tokens_receive_loss: true
+
+data:
+  train: ../dataset/train.jsonl
+  validation: ../dataset/validation.jsonl
+  test: ../dataset/test.jsonl
+  train_target_format: messages
+  holdout_unit: six_hour_inactivity_session
+  split_order: chronological
+  token_counts: exact_chat_template_counts_in_data_manifest
+
+output:
+  adapter_directory: ../adapter/final_lora
+  preserve_base_model: true
+  merge_only_after_subjective_and_quantitative_evaluation: true

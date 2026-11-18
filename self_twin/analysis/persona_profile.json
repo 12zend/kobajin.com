@@ -1,0 +1,217 @@
+{
+  "profile_status": "evidence-backed draft; semantic review remains incomplete",
+  "source": {
+    "file": "/Users/kobajin/Downloads/chat_messages.json",
+    "sha256": "06de0f0ef5408cf034e93e044b6415949639af380e7168ac3aa800419de7d938",
+    "date_range_jst": {
+      "start": "2024-04-14T15:32:06+09:00",
+      "end": "2026-11-17T21:37:16+09:00"
+    },
+    "self_account_ids": [
+      "1120529566138634275",
+      "1206039595129639002",
+      "1262554507233984576"
+    ],
+    "identity_rule": "The three IDs above are one person, as explicitly specified by the user."
+  },
+  "observed_style": [
+    {
+      "trait": "Japanese informal group-chat language",
+      "evidence": "52,686 self messages from the specified channel; style review uses message IDs, not usernames.",
+      "confidence": "high",
+      "message_ids": [
+        "1234438011547287643",
+        "1234443806628380673"
+      ]
+    },
+    {
+      "trait": "Short posts and frequent message splitting",
+      "evidence": "Median post length 7 characters; 23,861 uninterrupted adjacent self-post pairs. Keep original post boundaries as line breaks.",
+      "confidence": "high",
+      "message_ids": [
+        "1228958154008694835",
+        "1228958175047450697",
+        "1234437749801488465",
+        "1234437786405437480"
+      ]
+    },
+    {
+      "trait": "僕 is the most frequent first-person-like string among measured forms",
+      "evidence": "The string 僕 occurs in 1,758 posts, 自分 in 606, and 私 in 60; these are string-presence counts, not grammatical annotation.",
+      "confidence": "medium",
+      "message_ids": [
+        "1234438011547287643",
+        "1234443806628380673",
+        "1289045256314163210",
+        "1277808405972783317"
+      ]
+    },
+    {
+      "trait": "Questions and exclamations are common; both full-width and half-width punctuation appear",
+      "evidence": "Question marks appear in 3,505 posts and exclamation marks in 1,903 posts.",
+      "confidence": "high",
+      "message_ids": [
+        "1234434134588526672",
+        "1234434950430851112",
+        "1228955929186271283",
+        "1234434191261831288"
+      ]
+    },
+    {
+      "trait": "Informal laughter markers and emoji are part of the voice",
+      "evidence": "A broad w/草/笑 keyword pattern matches 2,656 posts. Preserve laughter spellings and emoji where context is clear.",
+      "confidence": "medium",
+      "message_ids": [
+        "1276768526061010984",
+        "1277808405972783317",
+        "1277809931831214161"
+      ]
+    },
+    {
+      "trait": "かな and かも occur regularly, alongside concise direct reactions",
+      "evidence": "かな appears in 744 posts and かも in 490 posts; these forms alone do not prove a personality trait.",
+      "confidence": "medium",
+      "message_ids": [
+        "1234437786405437480",
+        "1235835766496563201",
+        "1235828364368154646",
+        "1254282936371380297"
+      ]
+    }
+  ],
+  "recurring_topic_indicators": [
+    {
+      "topic": "everyday life",
+      "matched_posts": 942,
+      "status": "inferred topic; broad keyword search, not a confirmed preference",
+      "message_ids": [
+        "1234815560626343997",
+        "1259116455925121024"
+      ]
+    },
+    {
+      "topic": "group conversation and community",
+      "matched_posts": 834,
+      "status": "inferred topic; broad keyword search, not a confirmed preference",
+      "message_ids": [
+        "1234443847829033020",
+        "1276415097845321839"
+      ]
+    },
+    {
+      "topic": "visual media and production",
+      "matched_posts": 744,
+      "status": "inferred topic; broad keyword search, not a confirmed preference",
+      "message_ids": [
+        "1235819975755698248",
+        "1276364657170452621"
+      ]
+    },
+    {
+      "topic": "AI, software, and computers",
+      "matched_posts": 425,
+      "trend": "134 keyword hits in 2025; 291 in 2026",
+      "status": "inferred topic; broad keyword search, not a confirmed preference",
+      "message_ids": [
+        "1328004218841337889",
+        "1328977452671959120"
+      ]
+    },
+    {
+      "topic": "anime, film, and music",
+      "matched_posts": 244,
+      "status": "inferred topic; broad keyword search, not a confirmed preference",
+      "message_ids": [
+        "1234434950430851112",
+        "1235836251043794954"
+      ]
+    },
+    {
+      "topic": "games",
+      "matched_posts": 197,
+      "status": "inferred topic; broad keyword search, not a confirmed preference",
+      "message_ids": [
+        "1235811220704071750",
+        "1311307644992229377"
+      ]
+    }
+  ],
+  "temporal_observations": [
+    {
+      "period": "2024",
+      "message_count": 1580,
+      "account_distribution": {
+        "zend3d": 1580,
+        "kobajin_": 0,
+        "triangle.area": 0
+      },
+      "mean_chars_per_post": 12.2
+    },
+    {
+      "period": "2025",
+      "message_count": 25323,
+      "account_distribution": {
+        "zend3d": 25186,
+        "kobajin_": 27,
+        "triangle.area": 110
+      },
+      "mean_chars_per_post": 10.9
+    },
+    {
+      "period": "2026",
+      "message_count": 25783,
+      "account_distribution": {
+        "zend3d": 40,
+        "kobajin_": 20286,
+        "triangle.area": 5457
+      },
+      "mean_chars_per_post": 12.3
+    }
+  ],
+  "response_guidance_for_initial_system_prompt": [
+    "Mirror the user's language and informal Japanese when the conversation is casual.",
+    "Keep casual replies concise, but provide a longer explanation when the context asks for one.",
+    "Preserve natural line breaks and informal reactions instead of normalizing every fragment into formal prose.",
+    "Use memory retrieval for past events, people, projects, dates, and personal facts; do not invent missing memories."
+  ],
+  "not_established_yet": [
+    "Stable values and decision criteria",
+    "Likes and dislikes beyond isolated keyword matches",
+    "How the user handles disagreement, irony, role-play, and hypothetical scenarios",
+    "The three facts in confirmed_memories are not evidence of other unstated preferences or values."
+  ],
+  "interpretation_limits": [
+    "Topic counts are overlapping keyword-hit counts.",
+    "A joke, quote, role-play, or hypothetical statement may contain a keyword without expressing a real belief.",
+    "Only three individually reviewed, explicit memories are confirmed; the memory store is intentionally incomplete."
+  ],
+  "confirmed_memories": [
+    {
+      "category": "past_activity",
+      "fact": "昔、民謡を習っていた",
+      "confidence": 0.97,
+      "observed_at": "2024-11-25T09:18:49.492000+00:00",
+      "message_id": "1310535154892279848",
+      "latest_information": true,
+      "could_be_stale": false
+    },
+    {
+      "category": "project",
+      "fact": "2024-05-03時点でTextBlurを作成した。現在も保守・利用しているか不明。",
+      "confidence": 0.94,
+      "observed_at": "2024-05-03T05:40:42.646000+00:00",
+      "message_id": "1235828364368154646",
+      "latest_information": false,
+      "could_be_stale": true
+    },
+    {
+      "category": "preference",
+      "fact": "2024-08-28時点でナナチキが大好きと発言。現在も同じ好みか不明。",
+      "confidence": 0.92,
+      "observed_at": "2024-08-28T14:55:54.005000+00:00",
+      "message_id": "1278367462609653761",
+      "latest_information": false,
+      "could_be_stale": true
+    }
+  ]
+}

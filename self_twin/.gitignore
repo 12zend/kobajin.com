@@ -1,0 +1,23 @@
+# The source history and generated examples contain private conversation data.
+dataset/
+memory/personal_memory.jsonl
+memory/memory_database.sqlite
+evaluation/evaluation_prompts.jsonl
+evaluation/generations*.jsonl
+evaluation/benchmark*.json
+evaluation/subjective_review*
+
+# Large local checkpoints, adapters, and runtime files.
+.venv/
+hf_home/
+models/
+__pycache__/
+*.py[cod]
+adapter/*/adapter_model.*
+adapter/*/adapter/
+adapter/*/preflight.json
+adapter/*/training_metrics.json
+adapter/*/checkpoints/
+merged/qwen35_4b_self_twin/*.safetensors
+merged/qwen35_4b_self_twin/*.json
+merged/qwen35_4b_self_twin/*.model
