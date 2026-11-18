@@ -1,0 +1,41 @@
+[
+  {
+    "memory_id": "self-20241125-minyo",
+    "content": "2024-11-25、歌の話題で「私は昔民謡を習っていました」と本人が発言。過去に民謡を習った経験。",
+    "category": "past_activity",
+    "observed_at": "2024-11-25T09:18:49.492000+00:00",
+    "source_message_id": "1310535154892279848",
+    "confidence": 0.97,
+    "latest_information": true,
+    "is_current": true,
+    "could_be_stale": false,
+    "subject": "self",
+    "review_status": "confirmed"
+  },
+  {
+    "memory_id": "self-20240503-textblur",
+    "content": "2024-05-03時点で本人はTextBlurを作成したと発言。現在も保守・利用しているかは未確認。",
+    "category": "project",
+    "observed_at": "2024-05-03T05:40:42.646000+00:00",
+    "source_message_id": "1235828364368154646",
+    "confidence": 0.94,
+    "latest_information": false,
+    "is_current": false,
+    "could_be_stale": true,
+    "subject": "self",
+    "review_status": "confirmed"
+  },
+  {
+    "memory_id": "self-20240828-nanachiki",
+    "content": "2024-08-28、本人が「僕はナナチキ大好き」と発言。ナナチキが好きな食べ物として記録。当時の好みであり、現在も同じかは未確認。",
+    "category": "preference",
+    "observed_at": "2024-08-28T14:55:54.005000+00:00",
+    "source_message_id": "1278367462609653761",
+    "confidence": 0.92,
+    "latest_information": false,
+    "is_current": false,
+    "could_be_stale": true,
+    "subject": "self",
+    "review_status": "confirmed"
+  }
+]

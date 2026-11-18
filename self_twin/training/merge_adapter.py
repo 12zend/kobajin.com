@@ -30,14 +30,35 @@ def main() -> None:
     parser.add_argument("--adapter", type=Path, required=True)
     parser.add_argument("--decision", type=Path, default=PROJECT / "evaluation" / "decision.json")
     parser.add_argument("--output", type=Path, default=PROJECT / "merged" / "qwen35_4b_self_twin")
+    parser.add_argument(
+        "--allow-unapproved-experimental",
+        action="store_true",
+        help="Merge a listed evaluation candidate while recording that its quality gate failed.",
+    )
     args = parser.parse_args()
 
     decision = json.loads(args.decision.read_text(encoding="utf-8"))
-    if decision.get("status") != "passed":
-        raise SystemExit("Evaluation decision is not passed; refusing to merge")
-    decided_adapter = Path(decision.get("adapter_path", "")).resolve()
-    if args.adapter.resolve() != decided_adapter:
-        raise SystemExit("Requested adapter does not match the adapter that passed evaluation")
+    gate_passed = decision.get("status") == "passed" and decision.get("merge_allowed") is True
+    candidate = None
+    if gate_passed:
+        decided_adapter = Path(decision.get("adapter_path", "")).resolve()
+        if args.adapter.resolve() != decided_adapter:
+            raise SystemExit("Requested adapter does not match the adapter that passed evaluation")
+        candidate_name = decision.get("selected_candidate", "approved")
+    else:
+        if not args.allow_unapproved_experimental:
+            raise SystemExit("Evaluation decision is not passed; use --allow-unapproved-experimental only for a labeled experiment")
+        candidate = next(
+            (
+                item
+                for item in decision.get("candidates", [])
+                if (args.decision.parent / item.get("adapter", "")).resolve() == args.adapter.resolve()
+            ),
+            None,
+        )
+        if candidate is None:
+            raise SystemExit("Experimental adapter must be listed in the evaluation decision")
+        candidate_name = candidate["name"]
     weight_path = args.adapter / "adapter_model.safetensors"
     if not weight_path.is_file():
         raise SystemExit(f"Adapter weights not found: {weight_path}")
@@ -47,7 +68,28 @@ def main() -> None:
     if receipt.get("repo_id") != MODEL_ID or receipt.get("quantization") is not None:
         raise SystemExit("Pinned official post-trained base receipt is missing or quantized")
     revision = receipt["revision"]
-    expected_revision = decision.get("base_revision")
+    evaluated_run = {}
+    if candidate is not None and candidate.get("evaluation"):
+        evaluation_path = args.decision.parent / candidate["evaluation"]
+        if evaluation_path.is_file():
+            evaluated_run = json.loads(evaluation_path.read_text(encoding="utf-8"))
+    corrected_run = next(
+        (
+            item
+            for item in decision.get("corrected_generation_evaluations", [])
+            if candidate is not None and item.get("name") == candidate_name
+        ),
+        {},
+    )
+    if corrected_run.get("benchmark_file"):
+        corrected_path = args.decision.parent / corrected_run["benchmark_file"]
+        if corrected_path.is_file():
+            evaluated_run = json.loads(corrected_path.read_text(encoding="utf-8"))
+    expected_revision = (
+        decision.get("base_revision")
+        or evaluated_run.get("revision")
+        or evaluated_run.get("generation_settings", {}).get("revision")
+    )
     if expected_revision != revision:
         raise SystemExit("Evaluation decision does not match the pinned base revision")
 
@@ -83,6 +125,10 @@ def main() -> None:
         "adapter_path": str(args.adapter.resolve()),
         "adapter_sha256": sha256_file(weight_path),
         "evaluation_decision": str(args.decision.resolve()),
+        "evaluation_gate_passed": gate_passed,
+        "experimental_unapproved_merge": not gate_passed,
+        "candidate_name": candidate_name,
+        "evaluation_reason": decision.get("reason"),
         "merge_method": "PEFT PeftModel.merge_and_unload()",
         "dtype": "bfloat16",
         "format": "Transformers Safetensors",

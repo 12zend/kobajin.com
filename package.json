@@ -1,0 +1,17 @@
+{
+  "name": "kobajin-local-ai",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@mlc-ai/web-llm": "0.2.89"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}

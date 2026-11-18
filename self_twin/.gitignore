@@ -9,6 +9,8 @@ evaluation/subjective_review*
 
 # Large local checkpoints, adapters, and runtime files.
 .venv/
+mlc-venv/
+mlc-cache/
 hf_home/
 models/
 __pycache__/
@@ -21,3 +23,7 @@ adapter/*/checkpoints/
 merged/qwen35_4b_self_twin/*.safetensors
 merged/qwen35_4b_self_twin/*.json
 merged/qwen35_4b_self_twin/*.model
+merged/qwen35_4b_self_twin_experimental_*/*.safetensors
+merged/qwen35_4b_self_twin_experimental_*/tokenizer.json
+webllm/hf-upload/
+webllm/mlc-input/

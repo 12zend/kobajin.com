@@ -1,0 +1,16 @@
+{
+  "base_repo": "Qwen/Qwen3.5-4B",
+  "base_revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+  "adapter_path": "/Users/kobajin/repo/kobajin.com/self_twin/adapter/experiment-r8-balanced-lr1e5-5000/adapter",
+  "adapter_sha256": "4bb8a888c37ea3eedaff8006272405095b534b5655e68ad140e8708d50ffa273",
+  "evaluation_decision": "/Users/kobajin/repo/kobajin.com/self_twin/evaluation/decision.json",
+  "evaluation_gate_passed": false,
+  "experimental_unapproved_merge": true,
+  "candidate_name": "rank8_balanced_5000",
+  "evaluation_reason": "With corrected EOS stopping, all four LoRA candidates still fall below Base on conversational references. Rank 8 / 5,000 has the fewest repeated spans but 24/35 outputs at five characters or fewer; lowweight10 has longer outputs but 14 repeated-span cases. Human style review of the corrected outputs is pending. No adapter is eligible to merge.",
+  "merge_method": "PEFT PeftModel.merge_and_unload()",
+  "dtype": "bfloat16",
+  "format": "Transformers Safetensors",
+  "base_preserved": true,
+  "tokenizer_and_chat_template_saved": true
+}

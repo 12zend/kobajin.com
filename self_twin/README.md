@@ -10,7 +10,8 @@
 - `training/`: official post-trained Qwen3.5-4Bを固定revisionで取得。MPS/BF16、248個の言語側LoRA target、TRL assistant-only maskのtoken単位検証を実施。rank 8 / 1,000例、rank 16 / 1,000例、rank 8 / 5,000例、短い単発反応10%のrank 8 / 1,000例pilotを完了したが、会話のみのheld-out自動指標でbaseを上回る品質は確認できていない。
 - `evaluation/`: 時系列testから30件の主観評価promptを抽出し、意見訂正1件、記憶想起3件、未確認記憶1件を追加。EOS停止修正後に4候補を再評価済み。古いrank 8 / 5,000例レビューはEOS未指定の出力に対する暫定採点。修正後の会話出力レビューを別シートに用意。RAG記憶と会話スタイルは別々に評価。
 - `inference/`: ローカル推論と必要時のみの記憶検索をつなぐCLI案。未実行。
-- `adapter/` と `merged/`: baseと分離して実験別に保存する。評価通過前はfinal adapterを確定せず、マージしない。
+- `adapter/` と `merged/`: baseと分離して実験別に保存する。2026-11-18にowner依頼でrank 8 / balanced 5,000例を別フォルダへ実験マージした。評価decisionは品質ゲート未通過のままで、結果は承認済み・改善済みモデルではない。マージレシートを一緒に保存。
+- `webllm/`: WebLLM向けの静的チャットサイト用に、モデルとHugging Faceへアップロードするファイルを案内する。
 
 ## 再生成
 

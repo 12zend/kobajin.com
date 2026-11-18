@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0b0b" />
+    <meta name="description" content="Chat with kobajinAI, an experimental AI twin that runs in your browser and uses a few curated memories." />
+    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>kobajinAI — AI twin</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="kobajinAI home">
+          <img class="brand-logo" src="/logo.svg" alt="" />
+          <span>kobajinAI</span>
+        </a>
+        <div class="topbar-actions">
+          <span class="local-label"><i aria-hidden="true"></i> Runs locally</span>
+          <button class="new-chat" id="new-chat" type="button">New chat</button>
+        </div>
+      </header>
+
+      <main class="main-panel">
+        <section class="chat-stage" aria-label="Chat with kobajinAI">
+          <div class="welcome" id="welcome">
+            <img class="welcome-logo" src="/logo.svg" alt="Kobajin logo" />
+            <h1>Meet my AI twin.</h1>
+            <p class="welcome-copy">A local model shaped by how I talk, with a few confirmed memories.</p>
+
+            <div class="welcome-actions">
+              <button id="load-model" class="primary-button" type="button">
+                <span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" /></svg></span>
+                <span id="load-label">Load your model</span>
+              </button>
+              <p class="download-note" id="download-note">First load downloads the model. Your browser keeps it for next time.</p>
+            </div>
+
+            <div class="progress-wrap" id="progress-wrap" hidden>
+              <div class="progress-copy"><span id="progress-title">Preparing your local session</span><span id="progress-percent">0%</span></div>
+              <div class="progress-track"><span id="progress-bar"></span></div>
+              <p id="progress-detail">The model will be cached by your browser for next time.</p>
+            </div>
+          </div>
+
+          <div class="messages" id="messages" aria-live="polite" hidden></div>
+          <div class="screen-reader" id="live-status" role="status" aria-live="polite"></div>
+        </section>
+
+        <footer class="composer-area">
+          <form class="composer" id="composer">
+            <textarea id="prompt" rows="1" aria-label="Message kobajinAI" placeholder="Message kobajinAI..."></textarea>
+            <div class="composer-tools">
+              <span id="engine-status" class="engine-status"><i></i><span>Model not loaded</span></span>
+              <button id="send" class="send-button" type="submit" aria-label="Send message" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>
+            </div>
+          </form>
+          <p class="footer-note">Your conversation stays in this browser session.</p>
+        </footer>
+      </main>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
