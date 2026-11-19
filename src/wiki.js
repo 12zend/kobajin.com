@@ -84,27 +84,40 @@ function toArticle(page, topic) {
   };
 }
 
-async function searchPages(topic, { fetchImpl, signal, headers }) {
-  const params = new URLSearchParams({
-    action: "query",
-    format: "json",
-    formatversion: "2",
-    origin: "*",
-    generator: "search",
-    gsrsearch: topic,
-    gsrnamespace: "0",
-    gsrlimit: "20",
-    prop: "extracts|info",
-    exintro: "1",
-    explaintext: "1",
-    exlimit: "20",
-    inprop: "url",
-    redirects: "1",
-  });
-  const response = await fetchImpl(`${API_URL}?${params}`, { signal, headers });
+const BASE_PARAMS = {
+  action: "query",
+  format: "json",
+  formatversion: "2",
+  origin: "*",
+  prop: "extracts|info",
+  exintro: "1",
+  explaintext: "1",
+  inprop: "url",
+  redirects: "1",
+};
+
+async function queryPages(params, { fetchImpl, signal, headers }) {
+  const response = await fetchImpl(`${API_URL}?${new URLSearchParams({ ...BASE_PARAMS, ...params })}`, { signal, headers });
   if (!response.ok) throw new Error(`Wikipedia API returned ${response.status}`);
   const data = await response.json();
   return data?.query?.pages || [];
+}
+
+/** The article whose title is the topic itself (after redirects), if any. */
+function exactPage(topic, options) {
+  return queryPages({ titles: topic, exlimit: "1" }, options);
+}
+
+function searchPages(topic, options) {
+  return queryPages({
+    generator: "search",
+    gsrsearch: topic,
+    gsrnamespace: "0",
+    // Extracts are filled in page-id order up to a size cap, so ask only for the
+    // top hits; otherwise some top-ranked pages come back without an extract.
+    gsrlimit: String(TOP_RESULTS),
+    exlimit: String(TOP_RESULTS),
+  }, options);
 }
 
 /**
@@ -120,9 +133,17 @@ export async function fetchArticle({
   headers,
 } = {}) {
   const topics = topic ? [topic] : [...TOPICS].sort(() => random() - 0.5).slice(0, 3);
+  const options = { fetchImpl, signal, headers };
   for (const candidateTopic of topics) {
+    // Prefer the article titled exactly like the topic; search ranking on
+    // ja.wikipedia does not always put it first.
+    const exact = (await exactPage(candidateTopic, options))
+      .filter(isUsable)
+      .map((page) => toArticle(page, candidateTopic))
+      .find((article) => !exclude.has(article.url));
+    if (exact) return exact;
     // Search order is relevance order; lower-ranked hits drift off-topic.
-    const pages = (await searchPages(candidateTopic, { fetchImpl, signal, headers }))
+    const pages = (await searchPages(candidateTopic, options))
       .sort((left, right) => (left.index ?? 99) - (right.index ?? 99))
       .slice(0, TOP_RESULTS)
       .filter(isUsable)

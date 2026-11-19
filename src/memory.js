@@ -29,16 +29,21 @@ function matchRecords(query) {
 }
 
 /**
- * Confirmed memory records whose search terms appear in `text`, without the
- * intent check. Feed gates use this to allow first-person claims only when a
- * reviewed memory backs them. It does not change getMemoryContext().
+ * Confirmed memory records that `text` is clearly about, without the intent
+ * check. Feed gates use this to allow first-person claims only when a reviewed
+ * memory backs them. A record counts only when a matched term of two or more
+ * characters also appears in the record itself (民謡, TextBlur, ナナチキ), so
+ * generic search verbs such as 使って or 作った never back a claim.
+ * It does not change getMemoryContext().
  */
 export function findMemoryRecords(text) {
-  return matchRecords(String(text || "")).map(({ record, matchedTerms }) => ({
-    memory_id: record.memory_id,
-    content: record.content,
-    terms: matchedTerms,
-  }));
+  return matchRecords(String(text || ""))
+    .map(({ record, matchedTerms }) => {
+      const content = normalize(record.content);
+      const anchors = matchedTerms.filter((term) => [...term].length >= 2 && content.includes(normalize(term)));
+      return { memory_id: record.memory_id, content: record.content, terms: matchedTerms, anchors };
+    })
+    .filter((item) => item.anchors.length > 0);
 }
 
 export function getMemoryContext(query) {
