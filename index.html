@@ -24,6 +24,11 @@
           <kbd>⌘ K</kbd>
         </button>
 
+        <button class="sidebar-link history-toggle" id="history-toggle" type="button" aria-label="Show recent conversations" title="Recent conversations">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14" /><circle cx="3" cy="6" r=".4" /><circle cx="3" cy="12" r=".4" /><circle cx="3" cy="18" r=".4" /></svg>
+          <span>Recent</span>
+        </button>
+
         <div class="history-heading">
           <span>Recent</span>
           <span class="history-count" id="history-count">0</span>
@@ -69,18 +74,13 @@
         <section class="chat-stage" aria-label="Chat with kobajinAI">
           <div class="welcome" id="welcome">
             <div class="welcome-mark"><img class="welcome-logo" src="/logo.svg" alt="" /></div>
-            <span class="eyebrow">A little more personal</span>
             <h1>Meet my AI twin.</h1>
-            <p class="welcome-copy">Ask about kobajin, or just start a conversation.<br />The model runs right here in your browser.</p>
+            <p class="welcome-copy">Ask about kobajin, or just start a conversation.</p>
 
             <div class="suggestions" aria-label="Suggested prompts">
-              <button class="suggestion" type="button" data-prompt="What do you know about kobajin?">
-                <span class="suggestion-icon">✳</span>
-                <span><strong>Get to know kobajin</strong><small>Ask about verified memories</small></span>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-              </button>
-              <button class="suggestion" type="button" data-prompt="How does this AI twin work?"><span class="suggestion-icon">◌</span><span><strong>How this twin works</strong><small>A quick tour of the model</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
-              <button class="suggestion" type="button" data-prompt="What can I ask you?"><span class="suggestion-icon">↗</span><span><strong>See what you can ask</strong><small>Find a good place to begin</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
+              <button class="suggestion" type="button" data-prompt="What do you know about kobajin?">About kobajin</button>
+              <button class="suggestion" type="button" data-prompt="How does this AI twin work?">How it works</button>
+              <button class="suggestion" type="button" data-prompt="What can I ask you?">Start anywhere</button>
             </div>
 
             <div class="progress-wrap" id="progress-wrap" hidden>
@@ -96,13 +96,14 @@
 
         <footer class="composer-area">
           <form class="composer" id="composer">
+            <button class="composer-add" id="composer-new-chat" type="button" aria-label="Start a new chat" title="New chat">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
             <textarea id="prompt" rows="1" aria-label="Message kobajinAI" placeholder="Message kobajinAI..."></textarea>
             <div class="composer-tools">
-              <span class="composer-hint">Enter to send <span>·</span> Shift + Enter for a new line</span>
               <button id="send" class="send-button" type="submit" aria-label="Send message" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>
             </div>
           </form>
-          <p class="footer-note">Chats are saved only in this browser. <button id="about-trigger-footer" type="button">Learn about memory & privacy</button></p>
         </footer>
       </main>
     </div>

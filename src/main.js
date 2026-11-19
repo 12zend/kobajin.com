@@ -227,20 +227,13 @@ async function loadModel() {
 function appendMessage(role, content = "") {
   const article = document.createElement("article");
   article.className = `message ${role}`;
-  const avatar = document.createElement("div");
-  avatar.className = "message-avatar";
-  if (role === "assistant") {
-    avatar.innerHTML = '<img src="/logo.svg" alt="" />';
-  } else {
-    avatar.textContent = "Y";
-  }
   const body = document.createElement("div");
   body.className = "message-body";
   const text = document.createElement("div");
   text.className = "message-text";
   text.textContent = content;
   body.append(text);
-  article.append(avatar, body);
+  article.append(body);
   messagesView.append(article);
   messagesView.hidden = false;
   welcome.hidden = true;
@@ -292,6 +285,7 @@ function openAbout() {
 
 function closeSidebar() {
   sidebar.classList.remove("open");
+  sidebar.classList.remove("expanded");
   sidebarScrim.classList.remove("visible");
 }
 
@@ -424,6 +418,7 @@ promptBox.addEventListener("keydown", (event) => {
 });
 
 $("#new-chat").addEventListener("click", startNewChat);
+$("#composer-new-chat").addEventListener("click", startNewChat);
 conversationList.addEventListener("click", (event) => {
   const item = event.target.closest("[data-conversation-id]");
   if (item) void openConversation(item.dataset.conversationId);
@@ -432,10 +427,17 @@ $("#sidebar-toggle").addEventListener("click", () => {
   sidebar.classList.add("open");
   sidebarScrim.classList.add("visible");
 });
+$("#history-toggle").addEventListener("click", () => {
+  if (window.matchMedia("(max-width: 760px)").matches) {
+    sidebar.classList.add("open");
+    sidebarScrim.classList.add("visible");
+  } else {
+    sidebar.classList.toggle("expanded");
+  }
+});
 sidebarScrim.addEventListener("click", closeSidebar);
 $("#about-trigger").addEventListener("click", openAbout);
 $("#about-trigger-top").addEventListener("click", openAbout);
-$("#about-trigger-footer").addEventListener("click", openAbout);
 $("#about-close").addEventListener("click", () => aboutDialog.close());
 $("#about-done").addEventListener("click", () => aboutDialog.close());
 $("#clear-history").addEventListener("click", () => {
