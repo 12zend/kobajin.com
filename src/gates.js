@@ -132,6 +132,8 @@ export function formGate(text, finishReason = null) {
   if (HASHTAG.test(value)) return { pass: false, reason: "hashtag" };
   if (URL_LIKE.test(value)) return { pass: false, reason: "url" };
   if (EMOJI.test(value)) return { pass: false, reason: "emoji" };
+  // A post is one voice; standalone quoted lines are leaked dialogue turns.
+  if (value.split("\n").some((line) => /^[「『][^」』]*[」』]$/.test(line.trim()))) return { pass: false, reason: "dialogue" };
   return { pass: true };
 }
 

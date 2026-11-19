@@ -217,6 +217,7 @@ async function loadModel() {
     feed.refresh();
     return engine;
   })().catch((error) => {
+    console.error("kobajinAI model load failed", error);
     enginePromise = null;
     engine = null;
     worker?.terminate();

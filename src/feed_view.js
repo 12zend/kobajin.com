@@ -9,6 +9,7 @@ export const AUTO_POST_LIMIT = 3; // autonomous posts per browser session
 const IDLE_MS = 45_000; // no input for this long counts as idle
 const MIN_GAP_MS = 3 * 60_000; // between autonomous runs
 const TICK_MS = 10_000;
+const RECENT_ATTEMPT_WINDOW = 30; // dropped articles are not retried for this many runs
 const SESSION_COUNT_KEY = "kobajinAI.feed.autoCount";
 
 function readSessionCount() {
@@ -168,7 +169,11 @@ export function initFeed({ scheduler, getEngine, isChatBusy, modelId, announce }
     try {
       if (mode === "auto" && (isChatBusy() || scheduler.priorityWaiting)) return;
       await storeReady;
-      const exclude = new Set(posts.map((post) => post.source.url));
+      // Skip articles already posted and ones recently tried and dropped.
+      const exclude = new Set([
+        ...posts.map((post) => post.source.url),
+        ...logs.slice(0, RECENT_ATTEMPT_WINDOW).map((log) => log.url).filter(Boolean),
+      ]);
       const article = await fetchArticle({ exclude, signal: lease.signal });
       jobLabel = `Reading「${article.title}」…`;
       updateStatus();
