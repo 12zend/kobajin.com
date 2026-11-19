@@ -25,13 +25,83 @@ const progressPercent = $("#progress-percent");
 const progressBar = $("#progress-bar");
 const progressDetail = $("#progress-detail");
 const liveStatus = $("#live-status");
+const conversationList = $("#conversation-list");
+const historyCount = $("#history-count");
+const chatTitle = $("#chat-title");
+const sidebar = $("#sidebar");
+const sidebarScrim = $("#sidebar-scrim");
+const aboutDialog = $("#about-dialog");
 
 let engine = null;
 let enginePromise = null;
 let worker = null;
 let conversation = [];
+let currentConversationId = null;
+const conversationStorageKey = "kobajinAI.conversations.v1";
+let savedConversations = readSavedConversations();
 let generating = false;
 const storagePersistence = requestStoragePersistence();
+
+function readSavedConversations() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(conversationStorageKey) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => item && typeof item.id === "string" && Array.isArray(item.messages))
+      .map((item) => ({
+        id: item.id,
+        title: typeof item.title === "string" ? item.title : "New chat",
+        updatedAt: Number(item.updatedAt) || 0,
+        messages: item.messages.filter((message) => message && ["user", "assistant"].includes(message.role) && typeof message.content === "string"),
+      }))
+      .filter((item) => item.messages.length > 0)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 40);
+  } catch {
+    return [];
+  }
+}
+
+function saveCurrentConversation() {
+  if (!conversation.some((message) => message.role === "user")) return;
+  if (!currentConversationId) currentConversationId = globalThis.crypto?.randomUUID?.() || `chat-${Date.now()}`;
+  const firstMessage = conversation.find((message) => message.role === "user")?.content || "New chat";
+  const title = firstMessage.replace(/\s+/g, " ").trim().slice(0, 42) || "New chat";
+  const saved = { id: currentConversationId, title, updatedAt: Date.now(), messages: conversation };
+  savedConversations = [saved, ...savedConversations.filter((item) => item.id !== currentConversationId)]
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 40);
+  try {
+    localStorage.setItem(conversationStorageKey, JSON.stringify(savedConversations));
+  } catch {
+    liveStatus.textContent = "This chat could not be saved in browser storage.";
+  }
+  chatTitle.textContent = title;
+  renderConversationList();
+}
+
+function renderConversationList() {
+  conversationList.replaceChildren();
+  historyCount.textContent = String(savedConversations.length);
+  if (savedConversations.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-history";
+    empty.textContent = "Your chats will appear here.";
+    conversationList.append(empty);
+    return;
+  }
+  for (const item of savedConversations) {
+    const button = document.createElement("button");
+    button.className = `conversation-item${item.id === currentConversationId ? " active" : ""}`;
+    button.type = "button";
+    button.dataset.conversationId = item.id;
+    button.setAttribute("aria-current", item.id === currentConversationId ? "page" : "false");
+    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6.5A7.5 7.5 0 1 1 20 11.5Z" /></svg>';
+    const label = document.createElement("span");
+    label.textContent = item.title;
+    button.append(label);
+    conversationList.append(button);
+  }
+}
 
 async function requestStoragePersistence() {
   try {
@@ -127,8 +197,9 @@ async function loadModel() {
     });
     progressWrap.hidden = true;
     loadButton.classList.add("loaded");
+    loadButton.disabled = true;
     loadLabel.textContent = "Model ready";
-    loadButton.querySelector(".button-icon").innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>';
+    loadButton.querySelector("svg").innerHTML = '<path d="m5 12 4 4L19 6" />';
     setStatus("ready", "Ready on this device");
     liveStatus.textContent = "kobajinAI is ready in this browser.";
     sendButton.disabled = !promptBox.value.trim();
@@ -165,19 +236,63 @@ function appendMessage(role, content = "") {
   }
   const body = document.createElement("div");
   body.className = "message-body";
-  const heading = document.createElement("div");
-  heading.className = "message-heading";
-  heading.textContent = role === "assistant" ? "kobajinAI" : "You";
   const text = document.createElement("div");
   text.className = "message-text";
   text.textContent = content;
-  body.append(heading, text);
+  body.append(text);
   article.append(avatar, body);
   messagesView.append(article);
   messagesView.hidden = false;
   welcome.hidden = true;
   messagesView.scrollTop = messagesView.scrollHeight;
   return text;
+}
+
+function renderConversationMessages() {
+  messagesView.replaceChildren();
+  messagesView.hidden = true;
+  welcome.hidden = true;
+  for (const message of conversation) appendMessage(message.role, message.content);
+  if (conversation.length === 0) welcome.hidden = false;
+}
+
+async function openConversation(id) {
+  if (generating) return;
+  const selected = savedConversations.find((item) => item.id === id);
+  if (!selected) return;
+  currentConversationId = selected.id;
+  conversation = selected.messages.map((message) => ({ ...message }));
+  chatTitle.textContent = selected.title;
+  renderConversationMessages();
+  renderConversationList();
+  if (engine) await engine.resetChat().catch(() => {});
+  closeSidebar();
+  promptBox.focus();
+}
+
+function startNewChat() {
+  if (generating) return;
+  currentConversationId = null;
+  conversation = [];
+  messagesView.replaceChildren();
+  messagesView.hidden = true;
+  welcome.hidden = false;
+  chatTitle.textContent = "New chat";
+  renderConversationList();
+  if (engine) void engine.resetChat().catch(() => {});
+  promptBox.value = "";
+  resizePrompt();
+  closeSidebar();
+  promptBox.focus();
+}
+
+function openAbout() {
+  if (!aboutDialog.open) aboutDialog.showModal();
+}
+
+function closeSidebar() {
+  sidebar.classList.remove("open");
+  sidebarScrim.classList.remove("visible");
 }
 
 function formatConversationLog(messages) {
@@ -211,6 +326,7 @@ async function sendMessage(text) {
     const model = await loadModel();
     if (!model) return;
     conversation.push({ role: "user", content: value, timestamp: Date.now() });
+    saveCurrentConversation();
     appendMessage("user", value);
     promptBox.value = "";
     resizePrompt();
@@ -241,6 +357,7 @@ async function sendMessage(text) {
     responseView.classList.remove("streaming");
     responseView.textContent = reply;
     conversation.push({ role: "assistant", content: reply, timestamp: Date.now() });
+    saveCurrentConversation();
     liveStatus.textContent = "Response complete.";
   } catch (error) {
     console.error("kobajinAI response generation failed", error);
@@ -306,23 +423,50 @@ promptBox.addEventListener("keydown", (event) => {
   }
 });
 
-$("#new-chat").addEventListener("click", async () => {
-  conversation = [];
-  messagesView.replaceChildren();
-  messagesView.hidden = true;
-  welcome.hidden = false;
-  if (engine) await engine.resetChat().catch(() => {});
-  promptBox.value = "";
-  resizePrompt();
-  promptBox.focus();
+$("#new-chat").addEventListener("click", startNewChat);
+conversationList.addEventListener("click", (event) => {
+  const item = event.target.closest("[data-conversation-id]");
+  if (item) void openConversation(item.dataset.conversationId);
 });
+$("#sidebar-toggle").addEventListener("click", () => {
+  sidebar.classList.add("open");
+  sidebarScrim.classList.add("visible");
+});
+sidebarScrim.addEventListener("click", closeSidebar);
+$("#about-trigger").addEventListener("click", openAbout);
+$("#about-trigger-top").addEventListener("click", openAbout);
+$("#about-trigger-footer").addEventListener("click", openAbout);
+$("#about-close").addEventListener("click", () => aboutDialog.close());
+$("#about-done").addEventListener("click", () => aboutDialog.close());
+$("#clear-history").addEventListener("click", () => {
+  if (!window.confirm("Clear all conversations saved in this browser? This cannot be undone.")) return;
+  savedConversations = [];
+  try { localStorage.removeItem(conversationStorageKey); } catch { /* The in-memory history is still cleared. */ }
+  startNewChat();
+  liveStatus.textContent = "Conversation history cleared.";
+  aboutDialog.close();
+});
+
+document.querySelectorAll("[data-prompt]").forEach((button) => {
+  button.addEventListener("click", () => {
+    promptBox.value = button.dataset.prompt || "";
+    resizePrompt();
+    promptBox.focus();
+  });
+});
+
+document.addEventListener("keydown", (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    startNewChat();
+  }
+  if (event.key === "Escape") closeSidebar();
+});
+
+renderConversationList();
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });
 }
-
-window.setTimeout(() => {
-  loadModel().catch(() => {});
-}, 250);

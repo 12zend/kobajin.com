@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b0b0b" />
+    <meta name="theme-color" content="#f7f5ed" />
     <meta name="description" content="Chat with kobajinAI, an experimental AI twin that runs in your browser and uses a few curated memories." />
     <link rel="stylesheet" href="/src/style.css" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
@@ -12,36 +12,81 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar">
+      <aside class="sidebar" id="sidebar" aria-label="Conversation navigation">
         <a class="brand" href="/" aria-label="kobajinAI home">
           <img class="brand-logo" src="/logo.svg" alt="" />
           <span>kobajinAI</span>
         </a>
-        <div class="topbar-actions">
-          <span class="local-label"><i aria-hidden="true"></i> Runs locally</span>
-          <button class="new-chat" id="new-chat" type="button">New chat</button>
+
+        <button class="new-chat" id="new-chat" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          <span>New chat</span>
+          <kbd>⌘ K</kbd>
+        </button>
+
+        <div class="history-heading">
+          <span>Recent</span>
+          <span class="history-count" id="history-count">0</span>
         </div>
-      </header>
+        <nav class="conversation-list" id="conversation-list" aria-label="Recent conversations"></nav>
+        <div class="sidebar-spacer"></div>
+
+        <button class="sidebar-link" id="about-trigger" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" /></svg>
+          <span>Memory & privacy</span>
+        </button>
+        <div class="model-card">
+          <div class="model-card-top">
+            <span class="model-mark" aria-hidden="true"><i></i></span>
+            <span class="model-card-label">On this device</span>
+          </div>
+          <span id="engine-status" class="engine-status"><i></i><span>Model not loaded</span></span>
+          <button id="load-model" class="load-button" type="button">
+            <span id="load-label">Prepare model</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" /></svg>
+          </button>
+        </div>
+      </aside>
+
+      <div class="sidebar-scrim" id="sidebar-scrim"></div>
 
       <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-leading">
+            <button class="icon-button menu-button" id="sidebar-toggle" type="button" aria-label="Open conversation history">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <span class="chat-title" id="chat-title">New chat</span>
+          </div>
+          <div class="topbar-actions">
+            <span class="local-label"><i aria-hidden="true"></i> Private on this device</span>
+            <button class="icon-button about-button" id="about-trigger-top" type="button" aria-label="Memory and privacy">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" /></svg>
+            </button>
+          </div>
+        </header>
+
         <section class="chat-stage" aria-label="Chat with kobajinAI">
           <div class="welcome" id="welcome">
-            <img class="welcome-logo" src="/logo.svg" alt="Kobajin logo" />
+            <div class="welcome-mark"><img class="welcome-logo" src="/logo.svg" alt="" /></div>
+            <span class="eyebrow">A little more personal</span>
             <h1>Meet my AI twin.</h1>
-            <p class="welcome-copy">A local model shaped by how I talk, with a few confirmed memories.</p>
+            <p class="welcome-copy">Ask about kobajin, or just start a conversation.<br />The model runs right here in your browser.</p>
 
-            <div class="welcome-actions">
-              <button id="load-model" class="primary-button" type="button">
-                <span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" /></svg></span>
-                <span id="load-label">Load your model</span>
+            <div class="suggestions" aria-label="Suggested prompts">
+              <button class="suggestion" type="button" data-prompt="What do you know about kobajin?">
+                <span class="suggestion-icon">✳</span>
+                <span><strong>Get to know kobajin</strong><small>Ask about verified memories</small></span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
               </button>
-              <p class="download-note" id="download-note">First load downloads the model. Your browser keeps it for next time.</p>
+              <button class="suggestion" type="button" data-prompt="How does this AI twin work?"><span class="suggestion-icon">◌</span><span><strong>How this twin works</strong><small>A quick tour of the model</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
+              <button class="suggestion" type="button" data-prompt="What can I ask you?"><span class="suggestion-icon">↗</span><span><strong>See what you can ask</strong><small>Find a good place to begin</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
             </div>
 
             <div class="progress-wrap" id="progress-wrap" hidden>
               <div class="progress-copy"><span id="progress-title">Preparing your local session</span><span id="progress-percent">0%</span></div>
               <div class="progress-track"><span id="progress-bar"></span></div>
-              <p id="progress-detail">The model will be cached by your browser for next time.</p>
+              <p id="progress-detail">The first download is large. Your browser will keep it for next time.</p>
             </div>
           </div>
 
@@ -53,14 +98,32 @@
           <form class="composer" id="composer">
             <textarea id="prompt" rows="1" aria-label="Message kobajinAI" placeholder="Message kobajinAI..."></textarea>
             <div class="composer-tools">
-              <span id="engine-status" class="engine-status"><i></i><span>Model not loaded</span></span>
+              <span class="composer-hint">Enter to send <span>·</span> Shift + Enter for a new line</span>
               <button id="send" class="send-button" type="submit" aria-label="Send message" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>
             </div>
           </form>
-          <p class="footer-note">Your conversation stays in this browser session.</p>
+          <p class="footer-note">Chats are saved only in this browser. <button id="about-trigger-footer" type="button">Learn about memory & privacy</button></p>
         </footer>
       </main>
     </div>
+
+    <dialog class="about-dialog" id="about-dialog" aria-labelledby="about-title">
+      <div class="dialog-heading">
+        <div><span class="eyebrow">Your local session</span><h2 id="about-title">Memory & privacy</h2></div>
+        <button class="icon-button dialog-close" id="about-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+      </div>
+      <div class="dialog-section">
+        <span class="dialog-icon">⌂</span><div><h3>Runs in your browser</h3><p>The model is downloaded to this device and replies are generated locally. Your chat messages are not sent to a server.</p></div>
+      </div>
+      <div class="dialog-section">
+        <span class="dialog-icon">✳</span><div><h3>A few reviewed memories</h3><p>kobajinAI can use a small set of reviewed memories when they help answer a question. It should say when it does not know a personal detail.</p></div>
+      </div>
+      <div class="dialog-section">
+        <span class="dialog-icon">▤</span><div><h3>Conversation history</h3><p>Your recent chats are stored in this browser so you can come back to them. Clear them here at any time.</p></div>
+      </div>
+      <div class="dialog-actions"><button class="clear-history" id="clear-history" type="button">Clear conversation history</button><button class="done-button" id="about-done" type="button">Done</button></div>
+    </dialog>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
