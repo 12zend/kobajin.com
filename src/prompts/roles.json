@@ -1,0 +1,53 @@
+{
+  "context_window": 4096,
+  "excerpt_token_budget": 800,
+  "roles": {
+    "seed": {
+      "prompt": "seed.txt",
+      "compose": "standalone",
+      "temperature": 0.3,
+      "top_p": 1,
+      "repetition_penalty": 1.0,
+      "max_tokens": 80,
+      "json_schema": {
+        "type": "object",
+        "properties": {
+          "angle": { "type": "string" },
+          "facts": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["angle", "facts"]
+      }
+    },
+    "tweet": {
+      "prompt": "tweet.txt",
+      "compose": "append",
+      "temperature": 0.8,
+      "top_p": 1,
+      "repetition_penalty": 1.12,
+      "max_tokens": 90
+    },
+    "reply": {
+      "prompt": "reply.txt",
+      "compose": "append",
+      "temperature": 0.72,
+      "top_p": 1,
+      "repetition_penalty": 1.12,
+      "max_tokens": 120
+    },
+    "fact_check": {
+      "prompt": "fact_check.txt",
+      "compose": "standalone",
+      "temperature": 0,
+      "top_p": 1,
+      "repetition_penalty": 1.0,
+      "max_tokens": 40,
+      "json_schema": {
+        "type": "object",
+        "properties": {
+          "verdict": { "type": "string", "enum": ["supported", "unsupported", "unknown"] }
+        },
+        "required": ["verdict"]
+      }
+    }
+  }
+}

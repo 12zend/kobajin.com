@@ -15,11 +15,9 @@ function normalize(value) {
   return value.toLocaleLowerCase("ja-JP").replace(/[\s　。、！？!?「」『』]/g, "");
 }
 
-export function getMemoryContext(query) {
-  if (!MEMORY_INTENT.test(query)) return "";
-
+function matchRecords(query) {
   const normalizedQuery = normalize(query);
-  const matches = records
+  return records
     .map((record) => {
       const terms = searchTerms[record.memory_id] || [];
       const matchedTerms = terms.filter((term) => normalizedQuery.includes(normalize(term)));
@@ -28,6 +26,25 @@ export function getMemoryContext(query) {
     .filter((item) => item.score > 0)
     .sort((left, right) => right.score - left.score)
     .slice(0, 3);
+}
+
+/**
+ * Confirmed memory records whose search terms appear in `text`, without the
+ * intent check. Feed gates use this to allow first-person claims only when a
+ * reviewed memory backs them. It does not change getMemoryContext().
+ */
+export function findMemoryRecords(text) {
+  return matchRecords(String(text || "")).map(({ record, matchedTerms }) => ({
+    memory_id: record.memory_id,
+    content: record.content,
+    terms: matchedTerms,
+  }));
+}
+
+export function getMemoryContext(query) {
+  if (!MEMORY_INTENT.test(query)) return "";
+
+  const matches = matchRecords(query);
 
   if (matches.length === 0) {
     return [

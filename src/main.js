@@ -4,6 +4,8 @@ import {
   prebuiltAppConfig,
 } from "@mlc-ai/web-llm";
 import { getMemoryContext } from "./memory.js";
+import { createEngineScheduler } from "./agents.js";
+import { initFeed } from "./feed_view.js";
 import SYSTEM_PROMPT_SOURCE from "../self_twin/inference/system_prompt.txt?raw";
 
 const BASE_MODEL_ID = "Qwen3.5-4B-q4f16_1-MLC";
@@ -31,6 +33,10 @@ const chatTitle = $("#chat-title");
 const sidebar = $("#sidebar");
 const sidebarScrim = $("#sidebar-scrim");
 const aboutDialog = $("#about-dialog");
+const chatStage = $(".chat-stage");
+const composerArea = $(".composer-area");
+const feedStage = $("#feed-stage");
+const feedToggle = $("#feed-toggle");
 
 let engine = null;
 let enginePromise = null;
@@ -41,6 +47,10 @@ const conversationStorageKey = "kobajinAI.conversations.v1";
 let savedConversations = readSavedConversations();
 let generating = false;
 const storagePersistence = requestStoragePersistence();
+// One engine serves chat and the feed; chat interrupts autonomous feed posts.
+const engineScheduler = createEngineScheduler();
+engineScheduler.setInterrupt(() => engine?.interruptGenerate());
+let feedVisible = false;
 
 function readSavedConversations() {
   try {
@@ -204,6 +214,7 @@ async function loadModel() {
     liveStatus.textContent = "kobajinAI is ready in this browser.";
     sendButton.disabled = !promptBox.value.trim();
     promptBox.focus();
+    feed.refresh();
     return engine;
   })().catch((error) => {
     enginePromise = null;
@@ -255,6 +266,7 @@ async function openConversation(id) {
   if (!selected) return;
   currentConversationId = selected.id;
   conversation = selected.messages.map((message) => ({ ...message }));
+  showChat();
   chatTitle.textContent = selected.title;
   renderConversationMessages();
   renderConversationList();
@@ -265,6 +277,7 @@ async function openConversation(id) {
 
 function startNewChat() {
   if (generating) return;
+  showChat();
   currentConversationId = null;
   conversation = [];
   messagesView.replaceChildren();
@@ -277,6 +290,28 @@ function startNewChat() {
   resizePrompt();
   closeSidebar();
   promptBox.focus();
+}
+
+function showChat() {
+  if (!feedVisible) return;
+  feedVisible = false;
+  feedStage.hidden = true;
+  chatStage.hidden = false;
+  composerArea.hidden = false;
+  feedToggle.classList.remove("active");
+  chatTitle.textContent = savedConversations.find((item) => item.id === currentConversationId)?.title || "New chat";
+  feed.setVisible(false);
+}
+
+function showFeed() {
+  feedVisible = true;
+  chatStage.hidden = true;
+  composerArea.hidden = true;
+  feedStage.hidden = false;
+  feedToggle.classList.add("active");
+  chatTitle.textContent = "Feed";
+  feed.setVisible(true);
+  closeSidebar();
 }
 
 function openAbout() {
@@ -315,6 +350,7 @@ async function sendMessage(text) {
   if (!value || generating) return;
   setBusy(true);
   let responseView = null;
+  let engineLease = null;
 
   try {
     const model = await loadModel();
@@ -326,6 +362,7 @@ async function sendMessage(text) {
     resizePrompt();
     responseView = appendMessage("assistant", "");
     responseView.classList.add("streaming");
+    engineLease = await engineScheduler.acquire("chat", { priority: true });
     const memoryContext = getMemoryContext(value);
     const systemPrompt = memoryContext ? `${SYSTEM_PROMPT}\n\n${memoryContext}` : SYSTEM_PROMPT;
     const chunks = await model.chat.completions.create({
@@ -364,6 +401,7 @@ async function sendMessage(text) {
     }
     liveStatus.textContent = "There was a problem generating a response.";
   } finally {
+    engineLease?.release();
     setBusy(false);
     promptBox.focus();
     sendButton.disabled = !promptBox.value.trim();
@@ -418,6 +456,10 @@ promptBox.addEventListener("keydown", (event) => {
 });
 
 $("#new-chat").addEventListener("click", startNewChat);
+feedToggle.addEventListener("click", () => {
+  if (feedVisible) showChat();
+  else showFeed();
+});
 $("#composer-new-chat").addEventListener("click", startNewChat);
 conversationList.addEventListener("click", (event) => {
   const item = event.target.closest("[data-conversation-id]");
@@ -466,6 +508,14 @@ document.addEventListener("keydown", (event) => {
 });
 
 renderConversationList();
+
+const feed = initFeed({
+  scheduler: engineScheduler,
+  getEngine: () => engine,
+  isChatBusy: () => generating,
+  modelId: MODEL_ID,
+  announce: (text) => { liveStatus.textContent = text; },
+});
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
