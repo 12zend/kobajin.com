@@ -12,6 +12,8 @@ The currently published bundle was merged from `self_twin/adapter/experiment-r8-
 - `tokenizer.json` and `tokenizer_config.json`
 - Hugging Face revision: [`a2534a20253d54cce925307fbd76086498b09a11`](https://huggingface.co/kobajin/kobajinAI/commit/a2534a20253d54cce925307fbd76086498b09a11)
 
+The production default in `src/main.js` pins the model URL to this immutable revision and uses a versioned WebLLM `model_id`. Keep both in sync when publishing a new model: WebLLM caches weights by model URL, so replacing files behind `resolve/main/` can leave stale weights in a browser. `VITE_MODEL_URL` is a local bundle testing override; confirm it serves the intended bundle when using it.
+
 The owner authorized this as an experimental replacement after same-prompt evaluation improved over the previous published candidate: real-conversation char ROUGE-L-F1 `0.0492 → 0.0999`, median reply length `5 → 34` characters, and held-out synthetic char ROUGE-L-F1 `0.0746 → 0.2436`. The unadapted base remains higher on real-conversation references (`0.1213`), so the quality gate is still marked not passed. This release is not described as better than the base model.
 
 The MLC Qwen3.5 text loader intentionally ignores the model's vision weights. This site is text chat. The generated config uses the `qwen3_5` conversation template so its stop tokens match this tokenizer. The site reuses WebLLM's prebuilt Qwen3.5-4B WebGPU library, so a `.wasm` file does not need to be compiled or uploaded.

@@ -22,4 +22,5 @@ Read `PRODUCT.md` before changing this project. The project represents kobajin; 
 
 - Preserve the pinned base model and existing releases. Build each candidate in a separate, clearly named directory.
 - For WebLLM releases, follow `self_twin/webllm/README.md`; the browser loads MLC-converted weights, not a raw Transformers adapter or merged checkpoint.
+- Pin the production WebLLM model URL to the immutable Hugging Face revision and give each release a versioned `model_id`. If `VITE_MODEL_URL` is set for local bundle testing, verify that it serves the intended bundle. WebLLM caches by model URL, so replacing files behind `resolve/main/` can leave old weights in the browser.
 - Run the production build and the relevant fixed-prompt comparisons before publishing. Record limitations plainly; a successful upload is not itself evidence of model quality.

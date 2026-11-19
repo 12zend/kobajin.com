@@ -7,8 +7,9 @@ import { getMemoryContext } from "./memory.js";
 import SYSTEM_PROMPT_SOURCE from "../self_twin/inference/system_prompt.txt?raw";
 
 const BASE_MODEL_ID = "Qwen3.5-4B-q4f16_1-MLC";
-const MODEL_ID = "kobajinAI-qwen35-4b-q4f16_1-MLC";
-const MODEL_URL = import.meta.env.VITE_MODEL_URL || "https://huggingface.co/kobajin/kobajinAI";
+const MODEL_REVISION = "a2534a20253d54cce925307fbd76086498b09a11";
+const MODEL_ID = "kobajinAI-qwen35-4b-luna-v3-a2534a2-q4f16_1-MLC";
+const MODEL_URL = import.meta.env.VITE_MODEL_URL || `https://huggingface.co/kobajin/kobajinAI/resolve/${MODEL_REVISION}/`;
 const SYSTEM_PROMPT = SYSTEM_PROMPT_SOURCE.trim();
 const $ = (selector) => document.querySelector(selector);
 const welcome = $("#welcome");
@@ -225,7 +226,7 @@ async function sendMessage(text) {
       temperature: 0.72,
       top_p: 1,
       repetition_penalty: 1.12,
-      max_tokens: 384,
+      max_tokens: 160,
       extra_body: { enable_thinking: false },
       stream: true,
     });
