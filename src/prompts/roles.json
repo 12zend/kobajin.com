@@ -1,6 +1,7 @@
 {
   "context_window": 4096,
   "excerpt_token_budget": 800,
+  "template_margin_tokens": 96,
   "roles": {
     "seed": {
       "prompt": "seed.txt",

@@ -35,7 +35,7 @@ const PROMPTS = {
 const CONTEXT_WINDOW = ROLE_CONFIG.context_window;
 const EXCERPT_TOKEN_BUDGET = ROLE_CONFIG.excerpt_token_budget;
 // Chat template tokens, the empty think block, and estimator slack.
-const TEMPLATE_MARGIN_TOKENS = 96;
+const TEMPLATE_MARGIN_TOKENS = ROLE_CONFIG.template_margin_tokens;
 const MAX_TWEET_ATTEMPTS = 3; // first try + up to two regenerations
 const CHAT_FALLBACK = "ごめんなさい。短い返事を作れませんでした。もう一度お願いします。";
 

@@ -20,6 +20,7 @@ sys.path.insert(0, str(PROJECT / "memory"))
 from retrieve_memory import retrieve, should_retrieve  # noqa: E402
 sys.path.insert(0, str(PROJECT / "inference"))
 from generation import generate_assistant_response  # noqa: E402
+from role_prompts import compose_system_prompt, role_names, role_prompt_sha256, role_settings  # noqa: E402
 
 MODEL_ID = "Qwen/Qwen3.5-4B"
 DEFAULT_REVISION = "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a"
@@ -108,20 +109,41 @@ def main() -> None:
     )
     parser.add_argument("--output", type=Path, default=HERE / "generations.jsonl")
     parser.add_argument("--revision", default=DEFAULT_REVISION)
-    parser.add_argument("--max-new-tokens", type=int, default=160)
+    parser.add_argument(
+        "--role",
+        choices=role_names(),
+        help=(
+            "Use a feed role prompt from src/prompts (the same files and sampling the website uses). "
+            "Append roles add it after system_prompt.txt; standalone roles replace it. "
+            "Role sampling becomes the default for unspecified decoding flags."
+        ),
+    )
+    parser.add_argument("--max-new-tokens", type=int, default=None, help="default 160, or the role's max_tokens")
     parser.add_argument("--do-sample", action="store_true", help="Use the WebLLM-style sampling profile")
-    parser.add_argument("--temperature", type=float, default=0.72)
-    parser.add_argument("--top-p", type=float, default=1.0)
-    parser.add_argument("--repetition-penalty", type=float, default=1.12)
+    parser.add_argument("--temperature", type=float, default=None, help="default 0.72, or the role's temperature")
+    parser.add_argument("--top-p", type=float, default=None, help="default 1.0, or the role's top_p")
+    parser.add_argument("--repetition-penalty", type=float, default=None, help="default 1.12, or the role's value")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
+    role = role_settings(args.role) if args.role else {}
+    defaults = {
+        "max_new_tokens": role.get("max_tokens", 160),
+        "temperature": role.get("temperature", 0.72),
+        "top_p": role.get("top_p", 1.0),
+        "repetition_penalty": role.get("repetition_penalty", 1.12),
+    }
+    for name, value in defaults.items():
+        if getattr(args, name) is None:
+            setattr(args, name, value)
 
     if not args.adapter.is_dir():
         raise SystemExit(f"LoRA adapter directory does not exist: {args.adapter}")
     prompts = load_prompts(args.prompts)
     if not prompts:
         raise SystemExit("Evaluation prompt set is empty")
-    system_prompt = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    system_prompt = (
+        compose_system_prompt(args.role) if args.role else SYSTEM_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    )
     system_prompt_sha256 = hashlib.sha256(system_prompt.encode("utf-8")).hexdigest()
     for prompt in prompts:
         messages = prompt.setdefault("prompt_messages", [])
@@ -157,6 +179,9 @@ def main() -> None:
         "eos_token_id": processor.tokenizer.eos_token_id,
         "stop_before_next_chat_turn": True,
     }
+    if args.role:
+        generation_settings["role"] = args.role
+        generation_settings["role_prompt_sha256"] = role_prompt_sha256(args.role)
     model = AutoModelForMultimodalLM.from_pretrained(
         MODEL_ID,
         revision=args.revision,
