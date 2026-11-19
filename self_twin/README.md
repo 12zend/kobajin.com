@@ -6,11 +6,13 @@
 
 - `analysis/`: user_id監査、会話スタイルの集計、暫定プロフィールを作成済み。
 - `dataset/`: 3アカウントを統合し、連続投稿をまとめ、強い話題転換59か所を分割した時系列SFTデータを生成済み。
+- `dataset/synthetic_explanations_*.jsonl`: Lunaが確認済みの文体傾向をもとに新規作成した1,120例（257シナリオ×4種類の単独回答 + 説明・短文例92件、train 1,008・validation 112）。診断、懸念への返答、具体策、成功基準を別々の入力にしている。入力と返答は全件ユニーク。Discord本文は転載せず、本人の事実・好みを創作しない。依頼にあった強めの言い方は14例（1.25%）にだけ入れた。
 - `memory/`: 本人IDの明示的な過去経験・プロジェクト・好みから、出典付き確定記憶3件を作成。必要な質問だけローカル検索する。
-- `training/`: official post-trained Qwen3.5-4Bを固定revisionで取得。MPS/BF16、248個の言語側LoRA target、TRL assistant-only maskのtoken単位検証を実施。rank 8 / 1,000例、rank 16 / 1,000例、rank 8 / 5,000例、短い単発反応10%のrank 8 / 1,000例pilotを完了したが、会話のみのheld-out自動指標でbaseを上回る品質は確認できていない。
-- `evaluation/`: 時系列testから30件の主観評価promptを抽出し、意見訂正1件、記憶想起3件、未確認記憶1件を追加。EOS停止修正後に4候補を再評価済み。古いrank 8 / 5,000例レビューはEOS未指定の出力に対する暫定採点。修正後の会話出力レビューを別シートに用意。RAG記憶と会話スタイルは別々に評価。
+- `training/`: official post-trained Qwen3.5-4Bを固定revisionで取得。MPS/BF16、248個の言語側LoRA target、TRL assistant-only maskのtoken単位検証を実施。rank 8 / 1,000例pilot v3（合成70%）はtrain loss 2.955、validation loss 3.238で完了。v3は現在のHF公開候補rank8 / 5,000例より、実会話の返答中央値とchar ROUGE-L-F1、合成held-outの追従が改善したため、owner指示で実験版として公開した。baseとの品質ゲートは未通過。
+- `evaluation/`: 時系列testから35件、held-out合成シナリオ20件を評価。現在の本番system promptと同じファイルをWebLLMとベンチマークで共有し、同じsampling条件でbase、現行HF候補、v2、v3を比較する。現行HF候補→v3は実会話会話返信F1 `0.049`→`0.100`、返答中央値5→34文字、5文字以下18→3件。合成held-out F1は`0.075`→`0.244`。ただし実会話ではbase `0.121`に届かない。RAG記憶と会話スタイルは別々に評価。
 - `inference/`: ローカル推論と必要時のみの記憶検索をつなぐCLI案。未実行。
-- `adapter/` と `merged/`: baseと分離して実験別に保存する。2026-11-18にowner依頼でrank 8 / balanced 5,000例を別フォルダへ実験マージした。評価decisionは品質ゲート未通過のままで、結果は承認済み・改善済みモデルではない。マージレシートを一緒に保存。
+- `inference/system_prompt.txt`: WebLLM本番とheld-out評価で共通利用。質問・相談は具体的な返答にしつつ、相づちは短く保ち、本人の事実を作らない。
+- `adapter/` と `merged/`: baseと分離して実験別に保存する。旧rank 8 / balanced 5,000例とv3を別フォルダへ保存。v3はbase品質ゲート未通過だが、現行公開候補より改善したためowner指示で実験版としてHF公開し、merge receiptに評価状態を記録。
 - `webllm/`: WebLLM向けの静的チャットサイト用に、モデルとHugging Faceへアップロードするファイルを案内する。
 
 ## 再生成
@@ -46,5 +48,20 @@ python3.13 self_twin/training/train.py \
 ```
 
 既定では1,000件だけ学習する。修正版データで両rankを比較し、validationとheld-out出力を評価する。全学習splitを使う場合はpilot比較後に `--pilot-examples 0` を明示する。
+
+説明・相談への返答を補うpilotでは、短い相づちを水増しせず、合成セットを別ファイルで指定する。4種類の入力意図ごとに、実際の会話履歴を合成せず単独例として作成した。生成はスクリプトで再現できる。
+
+```bash
+python3 self_twin/training/build_synthetic_dataset.py
+self_twin/.venv/bin/python self_twin/training/train.py \
+  --revision 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a \
+  --rank 8 --pilot-examples 1000 --epochs 1 --learning-rate 0.00001 \
+  --low-weight-sample-rate 0.5 --synthetic-share 0.70 \
+  --synthetic-train self_twin/dataset/synthetic_explanations_train.jsonl \
+  --synthetic-validation self_twin/dataset/synthetic_explanations_validation.jsonl \
+  --output-dir self_twin/adapter/experiment-r8-luna-synthetic-1000-v3
+```
+
+v3は合成例を70%含める。評価promptは本番system promptを使う。v3はv2より返答が長くなり、合成質問への追従も上がったが、実会話では具体性・関連性のずれが残り、baseを上回らなかった。ownerの明示承認で実験版として公開済みだが、品質ゲートは未通過のまま。今後の通常の昇格は品質ゲート通過後に行う。
 
 チャット履歴はローカル処理し、外部サービスへ送っていない。現在のこの環境ではTransformers v5 / PEFT / TRLのMPS経路を使っている。Unslothはインストール・学習経路に使っていないため、Qwen3.5対応のUnslothガイドと必要VRAM目安は参考条件として記録し、Apple Siliconでの互換性がないという意味ではない。

@@ -16,21 +16,36 @@ class StopAtAssistantTurnStart(StoppingCriteria):
         return bool((input_ids[:, -1] == self.token_id).all().item())
 
 
-def generate_assistant_response(model, processor, inputs, max_new_tokens: int) -> str:
+def generate_assistant_response(
+    model,
+    processor,
+    inputs,
+    max_new_tokens: int,
+    *,
+    do_sample: bool = False,
+    temperature: float = 0.72,
+    top_p: float = 1.0,
+    repetition_penalty: float = 1.0,
+) -> str:
     tokenizer = processor.tokenizer
     eos_token_id = tokenizer.eos_token_id
     im_start_token_id = tokenizer.convert_tokens_to_ids("<|im_start|>")
     if eos_token_id is None or im_start_token_id is None:
         raise ValueError("Tokenizer must define eos_token_id and <|im_start|> for safe turn stopping")
 
+    generation_kwargs = {"repetition_penalty": repetition_penalty} if repetition_penalty != 1.0 else {}
+    if do_sample:
+        generation_kwargs.update(temperature=temperature, top_p=top_p)
+
     with torch.inference_mode():
         output = model.generate(
             **inputs,
             max_new_tokens=max_new_tokens,
-            do_sample=False,
+            do_sample=do_sample,
             use_cache=True,
             eos_token_id=eos_token_id,
             stopping_criteria=StoppingCriteriaList([StopAtAssistantTurnStart(im_start_token_id)]),
+            **generation_kwargs,
         )
 
     prompt_length = inputs["input_ids"].shape[-1]

@@ -1,0 +1,30 @@
+{
+  "base_repo": "Qwen/Qwen3.5-4B",
+  "base_revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+  "adapter_path": "self_twin/adapter/experiment-r8-luna-synthetic-1000-v3/adapter",
+  "adapter_sha256": "0950b43f3f93d7c21938128f017a97a5ff803fd36b8aaf7ed1c6d44b932fe3de",
+  "evaluation_decision": "self_twin/evaluation/decision.json",
+  "evaluation_gate_passed": false,
+  "experimental_unapproved_merge": true,
+  "candidate_name": "rank8_luna_synthetic_1000_v3",
+  "evaluation_reason": "The quality gate remains not_passed because v3 is below the unadapted base on real conversation references. The owner explicitly authorized an experimental release after same-prompt testing showed v3 improves materially over the currently deployed rank8_balanced_5000 candidate. This authorization permits publishing v3 as an experimental replacement; it does not mark the candidate as better than the base.",
+  "merge_method": "PEFT PeftModel.merge_and_unload()",
+  "dtype": "bfloat16",
+  "format": "Transformers Safetensors",
+  "base_preserved": true,
+  "tokenizer_and_chat_template_saved": true,
+  "owner_authorized_experimental_release": true,
+  "huggingface_release": {
+    "repo_id": "kobajin/kobajinAI",
+    "repo_type": "model",
+    "revision": "a2534a20253d54cce925307fbd76086498b09a11",
+    "url": "https://huggingface.co/kobajin/kobajinAI/commit/a2534a20253d54cce925307fbd76086498b09a11",
+    "quantization": "q4f16_1",
+    "parameter_shards": 76,
+    "bundle_file_count_uploaded": 80,
+    "public": true,
+    "owner_authorized": true,
+    "release_label": "experimental; base quality gate remains not_passed",
+    "new_data_transferred_approximate": "1.88 GB"
+  }
+}

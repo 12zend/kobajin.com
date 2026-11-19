@@ -90,6 +90,14 @@ def main() -> None:
     parser.add_argument("--rank", type=int, choices=(8, 16, 32), required=True)
     parser.add_argument("--output-dir", type=Path, required=True, help="Separate experiment adapter/checkpoint path")
     parser.add_argument("--pilot-examples", type=int, default=1000, help="Use 0 for the full training split")
+    parser.add_argument("--synthetic-train", type=Path, help="Optional curated synthetic conversation JSONL")
+    parser.add_argument("--synthetic-validation", type=Path, help="Optional held-out synthetic JSONL for validation")
+    parser.add_argument(
+        "--synthetic-share",
+        type=float,
+        default=0.15,
+        help="Target fraction of synthetic examples in a pilot when --synthetic-train is supplied",
+    )
     parser.add_argument("--epochs", type=float, default=2.0)
     parser.add_argument("--learning-rate", type=float, default=5e-5)
     parser.add_argument(
@@ -111,6 +119,8 @@ def main() -> None:
         raise SystemExit("--epochs and --learning-rate must be positive")
     if not 0.0 <= args.low_weight_sample_rate <= 1.0:
         raise SystemExit("--low-weight-sample-rate must be between 0 and 1")
+    if not 0.0 <= args.synthetic_share <= 1.0:
+        raise SystemExit("--synthetic-share must be between 0 and 1")
     receipt_path = Path(__file__).resolve().with_name("base_checkpoint.json")
     if not receipt_path.exists():
         raise SystemExit("Missing training/base_checkpoint.json; pin and audit the official checkpoint first")
@@ -214,29 +224,55 @@ def main() -> None:
         train_rows = [json.loads(line) for line in stream if line.strip()]
     with valid_path.open(encoding="utf-8") as stream:
         valid_rows = [json.loads(line) for line in stream if line.strip()]
+    synthetic_rows = []
+    if args.synthetic_train:
+        with args.synthetic_train.open(encoding="utf-8") as stream:
+            synthetic_rows = [json.loads(line) for line in stream if line.strip()]
+    synthetic_valid_rows = []
+    if args.synthetic_validation:
+        with args.synthetic_validation.open(encoding="utf-8") as stream:
+            synthetic_valid_rows = [json.loads(line) for line in stream if line.strip()]
     low_weight_rows = [row for row in train_rows if row.get("metadata", {}).get("low_weight_review")]
     regular_rows = [row for row in train_rows if not row.get("metadata", {}).get("low_weight_review")]
     selection_rng = random.Random(args.seed + 1)
     selection_rng.shuffle(low_weight_rows)
     selection_rng.shuffle(regular_rows)
+    selection_rng.shuffle(synthetic_rows)
     if args.pilot_examples:
-        desired_total = min(args.pilot_examples, len(train_rows))
-        desired_low = min(round(desired_total * args.low_weight_sample_rate), len(low_weight_rows))
-        desired_regular = min(desired_total - desired_low, len(regular_rows))
-        remaining = desired_total - desired_low - desired_regular
+        desired_total = min(args.pilot_examples, len(train_rows) + len(synthetic_rows))
+        desired_synthetic = min(round(desired_total * args.synthetic_share), len(synthetic_rows))
+        desired_original = desired_total - desired_synthetic
+        desired_low = min(round(desired_original * args.low_weight_sample_rate), len(low_weight_rows))
+        desired_regular = min(desired_original - desired_low, len(regular_rows))
+        remaining = desired_original - desired_low - desired_regular
         if remaining:
             add_low = min(remaining, len(low_weight_rows) - desired_low)
             desired_low += add_low
             remaining -= add_low
         if remaining:
             desired_regular += min(remaining, len(regular_rows) - desired_regular)
-        selected_train_rows = regular_rows[:desired_regular] + low_weight_rows[:desired_low]
+        selected_train_rows = (
+            regular_rows[:desired_regular]
+            + low_weight_rows[:desired_low]
+            + synthetic_rows[:desired_synthetic]
+        )
     else:
         keep_low = round(len(low_weight_rows) * args.low_weight_sample_rate)
-        selected_train_rows = regular_rows + low_weight_rows[:keep_low]
+        desired_synthetic = len(synthetic_rows)
+        selected_train_rows = regular_rows + low_weight_rows[:keep_low] + synthetic_rows
     random.Random(args.seed).shuffle(selected_train_rows)
     selected_low_weight_count = sum(
-        bool(row.get("metadata", {}).get("low_weight_review")) for row in selected_train_rows
+        bool(row.get("metadata", {}).get("low_weight_review"))
+        and not row.get("metadata", {}).get("synthetic")
+        for row in selected_train_rows
+    )
+    selected_synthetic_count = sum(
+        bool(row.get("metadata", {}).get("synthetic")) for row in selected_train_rows
+    )
+    selected_regular_count = sum(
+        not row.get("metadata", {}).get("low_weight_review")
+        and not row.get("metadata", {}).get("synthetic")
+        for row in selected_train_rows
     )
     all_lengths = [len(token_ids(processor, row["messages"])) for row in train_rows]
     if not all_lengths:
@@ -265,6 +301,7 @@ def main() -> None:
     if args.pilot_examples:
         random.Random(args.seed + 1).shuffle(valid_rows)
         valid_rows = valid_rows[: min(200, len(valid_rows))]
+    valid_rows.extend(synthetic_valid_rows)
     fitted_valid_rows = []
     for row in valid_rows:
         fitted, fit_report = fit_context_to_length(processor, row["messages"], max_length)
@@ -294,11 +331,15 @@ def main() -> None:
         "total_parameters": total,
         "pilot_examples": len(train_rows),
         "train_rows_available_before_low_weight_sampling": len(low_weight_rows) + len(regular_rows),
+        "synthetic_train_rows_available": len(synthetic_rows),
+        "synthetic_train_rows_selected": selected_synthetic_count,
+        "synthetic_share_requested": args.synthetic_share if args.synthetic_train else 0.0,
+        "synthetic_validation_rows": len(synthetic_valid_rows),
         "low_weight_rows_available": len(low_weight_rows),
         "regular_rows_available": len(regular_rows),
         "low_weight_sample_rate": args.low_weight_sample_rate,
         "low_weight_rows_selected": selected_low_weight_count,
-        "regular_rows_selected": len(selected_train_rows) - selected_low_weight_count,
+        "regular_rows_selected": selected_regular_count,
         "validation_examples_used": len(fitted_valid_rows),
         "train_examples_after_length_filter": train_count_after_filter,
         "training_targets_skipped_over_budget": dropped_long_targets,
@@ -334,6 +375,7 @@ def main() -> None:
         weight_decay=0.01,
         optim="adamw_torch",
         per_device_train_batch_size=1,
+        per_device_eval_batch_size=1,
         gradient_checkpointing=True,
         bf16=True,
         max_length=max_length,
@@ -344,6 +386,7 @@ def main() -> None:
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
         greater_is_better=False,
+        prediction_loss_only=True,
         logging_steps=10,
         report_to=[],
         seed=args.seed,

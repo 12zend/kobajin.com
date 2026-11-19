@@ -4,19 +4,12 @@ import {
   prebuiltAppConfig,
 } from "@mlc-ai/web-llm";
 import { getMemoryContext } from "./memory.js";
+import SYSTEM_PROMPT_SOURCE from "../self_twin/inference/system_prompt.txt?raw";
 
 const BASE_MODEL_ID = "Qwen3.5-4B-q4f16_1-MLC";
 const MODEL_ID = "kobajinAI-qwen35-4b-q4f16_1-MLC";
 const MODEL_URL = import.meta.env.VITE_MODEL_URL || "https://huggingface.co/kobajin/kobajinAI";
-const SYSTEM_PROMPT = [
-  "次のグループ会話の流れに合わせて、自然に返事してください。",
-  "あなたはkobajinAIです。自分の名前を聞かれたら「kobajinAI」と答え、別のモデル名を名乗らないでください。",
-  "会話ログの「自分」として、最新メッセージと同じ言語で返事だけを出力してください。思考過程、分析、前置きや解説は出力しないでください。",
-  "日本語の雑談では、くだけた短文や自然なリアクションを使ってください。求められていない説明や丁寧すぎる前置きは足さず、説明を頼まれたときは必要な長さで答えてください。必要なときは「僕」を使いますが、毎回使う必要はありません。",
-  "今回の質問に関連する本人の記憶がシステム欄にある場合だけ、それを根拠として使ってください。記憶候補の出典IDは回答に表示しません。",
-  "記憶検索で記録が見つからなかった場合、本人の過去の事実や好みを推測で埋めず、覚えていないか記録にないと自然に伝えてください。",
-].join("\n");
-
+const SYSTEM_PROMPT = SYSTEM_PROMPT_SOURCE.trim();
 const $ = (selector) => document.querySelector(selector);
 const welcome = $("#welcome");
 const messagesView = $("#messages");
@@ -229,10 +222,10 @@ async function sendMessage(text) {
         { role: "system", content: systemPrompt },
         { role: "user", content: formatConversationLog(conversation) },
       ],
-      temperature: 0,
+      temperature: 0.72,
       top_p: 1,
-      repetition_penalty: 1.1,
-      max_tokens: 256,
+      repetition_penalty: 1.12,
+      max_tokens: 384,
       extra_body: { enable_thinking: false },
       stream: true,
     });

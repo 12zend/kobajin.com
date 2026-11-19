@@ -1,5 +1,8 @@
 # The source history and generated examples contain private conversation data.
-dataset/
+dataset/*
+!dataset/synthetic_explanations_manifest.json
+!dataset/synthetic_explanations_train.jsonl
+!dataset/synthetic_explanations_validation.jsonl
 memory/personal_memory.jsonl
 memory/memory_database.sqlite
 evaluation/evaluation_prompts.jsonl
@@ -25,5 +28,7 @@ merged/qwen35_4b_self_twin/*.json
 merged/qwen35_4b_self_twin/*.model
 merged/qwen35_4b_self_twin_experimental_*/*.safetensors
 merged/qwen35_4b_self_twin_experimental_*/tokenizer.json
+merged/qwen35_4b_self_twin_experimental_*/*
+!merged/qwen35_4b_self_twin_experimental_*/merge_receipt.json
 webllm/hf-upload/
 webllm/mlc-input/

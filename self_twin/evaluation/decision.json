@@ -1,7 +1,7 @@
 {
   "status": "not_passed",
   "merge_allowed": false,
-  "reason": "With corrected EOS stopping, all four LoRA candidates still fall below Base on conversational references. Rank 8 / 5,000 has the fewest repeated spans but 24/35 outputs at five characters or fewer; lowweight10 has longer outputs but 14 repeated-span cases. Human style review of the corrected outputs is pending. No adapter is eligible to merge.",
+  "reason": "The quality gate remains not_passed because v3 is below the unadapted base on real conversation references. The owner explicitly authorized an experimental release after same-prompt testing showed v3 improves materially over the currently deployed rank8_balanced_5000 candidate. This authorization permits publishing v3 as an experimental replacement; it does not mark the candidate as better than the base.",
   "subjective_review_status": "old_generation_review_provisional_corrected_review_pending",
   "candidates": [
     {
@@ -56,6 +56,23 @@
       "long_low_diversity_responses": 11,
       "evaluation": "benchmark-r8-lowweight10-1000.json",
       "review_sheet": "subjective_review-r8-lowweight10-1000.md"
+    },
+    {
+      "name": "rank8_luna_synthetic_1000_v3",
+      "adapter": "../adapter/experiment-r8-luna-synthetic-1000-v3/adapter",
+      "train_examples": 1000,
+      "train_loss": 2.9548,
+      "validation_loss": 3.2378,
+      "synthetic_share": 0.7,
+      "evaluation": "benchmark-r8-luna-synthetic-1000-v3-system-v2-sampled.json",
+      "heldout_synthetic_evaluation": "benchmark-r8-luna-synthetic-heldout-v3-system-v2-sampled.json",
+      "real_conversation_char_rouge_l_f1": 0.0998555,
+      "current_deployed_candidate_char_rouge_l_f1": 0.0492008,
+      "base_char_rouge_l_f1": 0.1213488,
+      "median_response_characters": 34,
+      "responses_at_most_5_characters": 3,
+      "merge_allowed": false,
+      "experimental_release_authorized_by_owner": true
     }
   ],
   "base_heldout_char_rouge_l_f1": 0.0912,
@@ -66,7 +83,7 @@
     "unverified_memory_queries": 1
   },
   "rag_memory_note": "RAG retrieved the expected source IDs in 3/3 known-memory cases for each corrected run. Generated fact terms were 3/3 for the matched 1,000-example rank 8 and rank 16 runs and for the low-reaction 10% run; 2/3 for the 5,000-example rank 8 run. Unknown memory query returned no retrieved records.",
-  "next_gate": "Review the 31 corrected conversation cases in subjective_review-luna-kobajin-eosfix.md. Prior scores for unchanged memory cases 32–35 remain recorded. Then decide whether to adjust sampling/training or generation controls; do not merge until short-reply and repetition issues pass owner review.",
+  "next_gate": "Owner may review the currently published experimental v3 in the 35-case blinded sheet. Keep the base quality gate marked not_passed until human review confirms context relevance and useful detail; compare any future candidate against both this deployed v3 and the unadapted base.",
   "owner_review": {
     "candidate": "rank8_balanced_5000 LoRA+RAG",
     "score_sheet": "subjective_review-luna-kobajin.md",
@@ -194,5 +211,97 @@
       "known_memory_total": 3,
       "expected_memory_sources_retrieved": 3
     }
-  ]
+  ],
+  "latest_synthetic_experiment": {
+    "name": "rank8_luna_synthetic_1000_v3",
+    "adapter": "../adapter/experiment-r8-luna-synthetic-1000-v3/adapter",
+    "train_examples": 1000,
+    "synthetic_examples": 700,
+    "low_weight_reaction_examples": 150,
+    "regular_authentic_examples": 150,
+    "train_loss": 2.9548,
+    "validation_loss": 3.2378,
+    "current_system_prompt_sha256": "4bc750d82c80686b92d1f7887d1d998e07b37829b2d9005bd784c9046c0bf4dd",
+    "evaluation": {
+      "same_prompt_and_sampling_as_v2": true,
+      "real_conversation_prompts": 35,
+      "synthetic_heldout_prompts": 20,
+      "conversation_only_char_rouge_l_f1": {
+        "base": 0.1213488,
+        "v2": 0.0850017,
+        "v3": 0.0998555
+      },
+      "synthetic_heldout_char_rouge_l_f1": {
+        "base": 0.1779544,
+        "v2": 0.2002552,
+        "v3": 0.2435781
+      },
+      "v2_response_median_characters": 14,
+      "v3_response_median_characters": 34,
+      "v2_responses_at_most_5_characters": 5,
+      "v3_responses_at_most_5_characters": 3,
+      "v3_long_low_diversity_responses": 0
+    },
+    "real_evaluation": "benchmark-r8-luna-synthetic-1000-v3-system-v2-sampled.json",
+    "synthetic_evaluation": "benchmark-r8-luna-synthetic-heldout-v3-system-v2-sampled.json",
+    "subjective_review": "subjective_review-r8-luna-synthetic-1000-v3-system-v2-sampled.md",
+    "merge_allowed": false,
+    "hf_release": {
+      "repo_id": "kobajin/kobajinAI",
+      "repo_type": "model",
+      "revision": "a2534a20253d54cce925307fbd76086498b09a11",
+      "url": "https://huggingface.co/kobajin/kobajinAI/commit/a2534a20253d54cce925307fbd76086498b09a11",
+      "quantization": "q4f16_1",
+      "parameter_shards": 76,
+      "bundle_file_count_uploaded": 80,
+      "new_bytes_transferred": 1880000000,
+      "public": true,
+      "owner_authorized": true,
+      "release_label": "experimental; base quality gate remains not_passed"
+    }
+  },
+  "current_hf_comparison": {
+    "candidate": "rank8_luna_synthetic_1000_v3",
+    "current_hf_candidate": "rank8_balanced_5000",
+    "same_current_production_system_prompt": true,
+    "same_sampling_profile": true,
+    "real_prompt_count": 35,
+    "synthetic_prompt_count": 20,
+    "conversation_char_rouge_l_f1": {
+      "current_hf": 0.0492008,
+      "v3": 0.0998555,
+      "base": 0.1213488
+    },
+    "synthetic_heldout_char_rouge_l_f1": {
+      "current_hf": 0.0746162,
+      "v3": 0.2435781,
+      "base": 0.1779544
+    },
+    "median_real_response_characters": {
+      "current_hf": 5,
+      "v3": 34
+    },
+    "real_responses_at_most_5_characters": {
+      "current_hf": 18,
+      "v3": 3
+    },
+    "note": "v3 improves on the deployed candidate but remains below the unadapted base for real conversation style. Release is experimental and does not mark the merge quality gate as passed.",
+    "owner_authorized_experimental_release": true,
+    "release": {
+      "repo_id": "kobajin/kobajinAI",
+      "repo_type": "model",
+      "revision": "a2534a20253d54cce925307fbd76086498b09a11",
+      "url": "https://huggingface.co/kobajin/kobajinAI/commit/a2534a20253d54cce925307fbd76086498b09a11",
+      "quantization": "q4f16_1",
+      "parameter_shards": 76,
+      "bundle_file_count_uploaded": 80,
+      "public": true,
+      "owner_authorized": true,
+      "release_label": "experimental; base quality gate remains not_passed",
+      "new_data_transferred_approximate": "1.88 GB"
+    },
+    "current_revision": "a2534a20253d54cce925307fbd76086498b09a11",
+    "merge_receipt": "../merged/qwen35_4b_self_twin_experimental_luna_synthetic_v3_20261119/merge_receipt.json"
+  },
+  "owner_authorized_experimental_release": true
 }

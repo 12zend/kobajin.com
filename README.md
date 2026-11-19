@@ -27,3 +27,5 @@ Build the static site with `npm run build` and publish the generated `dist/` dir
 The model repository used by the app is `kobajin/kobajinAI`. For anonymous browser downloads, the repository must allow public read access. Do not place a Hugging Face write token in the frontend.
 
 See [`self_twin/webllm/README.md`](self_twin/webllm/README.md) for the exact model files to upload and how to prepare WebLLM-compatible weights from the merged checkpoint.
+
+The current HF model revision is [`a2534a20253d54cce925307fbd76086498b09a11`](https://huggingface.co/kobajin/kobajinAI/commit/a2534a20253d54cce925307fbd76086498b09a11). It is an owner-authorized experimental update that improves on the previous published candidate; evaluation still ranks the unadapted base higher on real conversation references.

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -23,6 +24,7 @@ from generation import generate_assistant_response  # noqa: E402
 MODEL_ID = "Qwen/Qwen3.5-4B"
 DEFAULT_REVISION = "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a"
 DEFAULT_CACHE = PROJECT / "hf_home" / "hub"
+SYSTEM_PROMPT_PATH = PROJECT / "inference" / "system_prompt.txt"
 
 
 def load_prompts(path: Path) -> list[dict]:
@@ -67,7 +69,14 @@ def persist_results(path: Path, rows: list[dict]) -> None:
     temporary.replace(path)
 
 
-def generate_one(model, processor, messages: list[dict], device: str, max_new_tokens: int) -> str:
+def generate_one(
+    model,
+    processor,
+    messages: list[dict],
+    device: str,
+    max_new_tokens: int,
+    generation_options: dict,
+) -> str:
     inputs = processor.apply_chat_template(
         messages,
         add_generation_prompt=True,
@@ -80,7 +89,12 @@ def generate_one(model, processor, messages: list[dict], device: str, max_new_to
         key: value.to(device) if hasattr(value, "to") else value
         for key, value in inputs.items()
     }
-    return generate_assistant_response(model, processor, inputs, max_new_tokens)
+    return generate_assistant_response(model, processor, inputs, max_new_tokens, **generation_options)
+
+
+def self_twin_rag_response(model, processor, messages, device, args, generation_options, index):
+    torch.manual_seed(args.seed + index)
+    return generate_one(model, processor, messages, device, args.max_new_tokens, generation_options)
 
 
 def main() -> None:
@@ -94,7 +108,12 @@ def main() -> None:
     )
     parser.add_argument("--output", type=Path, default=HERE / "generations.jsonl")
     parser.add_argument("--revision", default=DEFAULT_REVISION)
-    parser.add_argument("--max-new-tokens", type=int, default=128)
+    parser.add_argument("--max-new-tokens", type=int, default=160)
+    parser.add_argument("--do-sample", action="store_true", help="Use the WebLLM-style sampling profile")
+    parser.add_argument("--temperature", type=float, default=0.72)
+    parser.add_argument("--top-p", type=float, default=1.0)
+    parser.add_argument("--repetition-penalty", type=float, default=1.12)
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
     if not args.adapter.is_dir():
@@ -102,6 +121,14 @@ def main() -> None:
     prompts = load_prompts(args.prompts)
     if not prompts:
         raise SystemExit("Evaluation prompt set is empty")
+    system_prompt = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    system_prompt_sha256 = hashlib.sha256(system_prompt.encode("utf-8")).hexdigest()
+    for prompt in prompts:
+        messages = prompt.setdefault("prompt_messages", [])
+        if messages and messages[0].get("role") == "system":
+            messages[0]["content"] = system_prompt
+        else:
+            messages.insert(0, {"role": "system", "content": system_prompt})
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     if device == "cpu":
         raise SystemExit("No CUDA or MPS device is available; refusing 4B evaluation on CPU")
@@ -113,11 +140,19 @@ def main() -> None:
     )
     if processor.tokenizer.eos_token_id is None:
         raise SystemExit("Tokenizer has no EOS token; refusing to generate unbounded chat turns")
+    generation_options = {
+        "do_sample": args.do_sample,
+        "temperature": args.temperature,
+        "top_p": args.top_p,
+        "repetition_penalty": args.repetition_penalty if args.do_sample else 1.0,
+    }
     generation_settings = {
         "model_id": MODEL_ID,
         "revision": args.revision,
         "max_new_tokens": args.max_new_tokens,
-        "do_sample": False,
+        **generation_options,
+        "seed": args.seed,
+        "system_prompt_sha256": system_prompt_sha256,
         "enable_thinking": False,
         "eos_token_id": processor.tokenizer.eos_token_id,
         "stop_before_next_chat_turn": True,
@@ -153,11 +188,13 @@ def main() -> None:
     else:
         print(f"Reusing {len(prompts)} base responses from {args.base_results}", flush=True)
     for index, prompt in enumerate(prompts):
-        base_response = (
-            reused_base[index]["base"]
-            if reused_base is not None
-            else generate_one(model, processor, prompt["prompt_messages"], device, args.max_new_tokens)
-        )
+        if reused_base is not None:
+            base_response = reused_base[index]["base"]
+        else:
+            torch.manual_seed(args.seed + index)
+            base_response = generate_one(
+                model, processor, prompt["prompt_messages"], device, args.max_new_tokens, generation_options
+            )
         results.append({
             "index": index,
             "category": prompt["category"],
@@ -179,13 +216,16 @@ def main() -> None:
     for index, prompt in enumerate(prompts):
         messages = prompt["prompt_messages"]
         query = get_query_text(messages)
-        response = generate_one(model, processor, messages, device, args.max_new_tokens)
+        torch.manual_seed(args.seed + index)
+        response = generate_one(
+            model, processor, messages, device, args.max_new_tokens, generation_options
+        )
         rag_messages, matches = with_memory(messages, query)
         # The RAG branch is identical when the query does not ask for memory.
         # Reuse that output; run a separate generation only for retrieved facts
         # or an attempted lookup that needs an explicit unknown-memory response.
         rag_response = (
-            generate_one(model, processor, rag_messages, device, args.max_new_tokens)
+            self_twin_rag_response(model, processor, rag_messages, device, args, generation_options, index)
             if matches or should_retrieve(query)
             else response
         )
