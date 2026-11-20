@@ -66,22 +66,25 @@ export function getMemoryContext(query) {
 }
 
 /**
- * What the chat memory lookup did for `query`, for display only. It follows
- * the same intent check and matching as getMemoryContext() and does not change
- * the prompt. state: "none" (no lookup), "empty" (looked, nothing confirmed),
- * or "found" (records were offered to the model as candidates).
+ * What the chat memory lookup offered the model for `query`, for the reply's
+ * receipt only. It runs the same intent check and matching as
+ * getMemoryContext() and never changes the prompt.
+ *   kind: "none"  – the message did not ask about kobajin's past or tastes
+ *         "empty" – it did, and no confirmed record matched
+ *         "found" – these confirmed records were offered as candidates
  */
-export function describeMemoryLookup(query) {
-  if (!MEMORY_INTENT.test(String(query || ""))) return { state: "none", records: [] };
-  const matches = matchRecords(String(query));
-  if (matches.length === 0) return { state: "empty", records: [] };
+export function lookupMemories(query) {
+  const text = String(query || "");
+  if (!MEMORY_INTENT.test(text)) return { kind: "none", records: [] };
+  const matches = matchRecords(text);
+  if (matches.length === 0) return { kind: "empty", records: [] };
   return {
-    state: "found",
+    kind: "found",
     records: matches.map(({ record }) => ({
-      memory_id: record.memory_id,
+      id: record.memory_id,
       content: record.content,
-      observed_at: record.observed_at,
-      could_be_stale: Boolean(record.could_be_stale),
+      observedAt: record.observed_at || null,
+      stale: Boolean(record.could_be_stale),
     })),
   };
 }

@@ -2,60 +2,48 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#f4f3ef" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0c0c0e" media="(prefers-color-scheme: dark)" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="Chat with kobajinAI, an experimental AI twin that runs in your browser and uses a few curated memories." />
     <link rel="stylesheet" href="/src/style.css" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>kobajinAI — AI twin</title>
   </head>
-  <body data-twin="absent">
+  <body data-presence="offline">
     <div class="app-shell">
-      <aside class="sidebar" id="sidebar" aria-label="Conversation navigation">
-        <a class="brand" href="/" aria-label="kobajinAI home">
-          <span class="mark brand-logo" aria-hidden="true"></span>
-          <span>kobajinAI</span>
-        </a>
-
-        <button class="new-chat" id="new-chat" type="button" title="New chat">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-          <span>New chat</span>
-          <kbd>⌘ K</kbd>
-        </button>
-
-        <button class="sidebar-link feed-toggle" id="feed-toggle" type="button" aria-label="Open kobajinAI feed" title="Feed">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M5 10h14M5 15h9M5 20h6" /></svg>
-          <span>Feed</span>
-        </button>
-
-        <button class="sidebar-link history-toggle" id="history-toggle" type="button" aria-label="Show recent conversations" title="Recent conversations">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3 2" /><circle cx="12" cy="12" r="8.5" /></svg>
-          <span>Recent</span>
-        </button>
-
-        <div class="history-heading">
-          <span>Recent</span>
-          <span class="history-count" id="history-count">0</span>
+      <aside class="sidebar" id="sidebar" aria-label="Conversations">
+        <div class="sidebar-head">
+          <a class="brand" href="/" aria-label="kobajinAI home">
+            <span class="logo-mark" aria-hidden="true"></span>
+            <span>kobajinAI</span>
+          </a>
+          <button class="icon-button" id="new-chat" type="button" aria-label="New chat" title="New chat (⌘K)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
+          </button>
         </div>
-        <nav class="conversation-list" id="conversation-list" aria-label="Recent conversations"></nav>
-        <div class="sidebar-spacer"></div>
 
-        <button class="sidebar-link" id="about-trigger" type="button" title="Memory & privacy">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" /></svg>
-          <span>Memory & privacy</span>
-        </button>
-        <div class="model-card">
-          <div class="model-card-top">
-            <span class="model-mark" aria-hidden="true"><i></i></span>
-            <span class="model-card-label">On this device</span>
+        <div class="view-switch" role="tablist" aria-label="View">
+          <button class="view-tab active" id="chats-tab" type="button" role="tab" aria-selected="true">Chats <span class="history-count" id="history-count">0</span></button>
+          <button class="view-tab feed-toggle" id="feed-toggle" type="button" role="tab" aria-selected="false">Feed</button>
+        </div>
+
+        <nav class="conversation-list" id="conversation-list" aria-label="Recent conversations"></nav>
+
+        <div class="sidebar-foot">
+          <div class="device-card" id="device-card">
+            <div class="device-row">
+              <span class="presence-dot" aria-hidden="true"></span>
+              <span class="device-title" id="device-title">Not on this device yet</span>
+            </div>
+            <p class="device-detail" id="device-detail">About 2.2 GiB, downloaded once and kept in this browser.</p>
+            <button id="load-model" class="device-button" type="button"><span id="load-label">Bring online</span></button>
           </div>
-          <span id="engine-status" class="engine-status"><i></i><span>Model not loaded</span></span>
-          <button id="load-model" class="load-button" type="button" title="Load the model on this device">
-            <span id="load-label">Prepare model</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" /></svg>
+          <button class="sidebar-link" id="about-trigger" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" /></svg>
+            <span>Memory &amp; privacy</span>
           </button>
         </div>
       </aside>
@@ -64,36 +52,52 @@
 
       <main class="main-panel">
         <header class="topbar">
-          <div class="topbar-leading">
-            <button class="icon-button menu-button" id="sidebar-toggle" type="button" aria-label="Open conversation history">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h16" /></svg>
-            </button>
-            <span class="chat-title" id="chat-title">New chat</span>
-          </div>
-          <div class="topbar-actions">
-            <span class="presence" id="presence" title="Where kobajinAI is running">
-              <span class="presence-dot" aria-hidden="true"></span>
-              <span class="presence-label" id="presence-label">Not on this device</span>
+          <button class="icon-button menu-button" id="sidebar-toggle" type="button" aria-label="Open conversations">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6" /></svg>
+            <span class="menu-unread" id="menu-unread" hidden></span>
+          </button>
+          <button class="presence" id="presence" type="button" aria-describedby="presence-line">
+            <span class="avatar"><span class="logo-mark" aria-hidden="true"></span><span class="presence-dot" aria-hidden="true"></span></span>
+            <span class="presence-copy">
+              <span class="presence-name" id="chat-title">kobajinAI</span>
+              <span class="presence-line" id="presence-line">Offline · send a message to bring it online</span>
             </span>
-            <button class="icon-button about-button" id="about-trigger-top" type="button" aria-label="Memory and privacy">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" /></svg>
-            </button>
-          </div>
-          <span class="topbar-progress" aria-hidden="true"><span id="topbar-progress-bar"></span></span>
+          </button>
+          <button class="icon-button about-button" id="about-trigger-top" type="button" aria-label="Memory and privacy">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" /></svg>
+          </button>
+          <span class="arrival-bar" aria-hidden="true"><span id="arrival-bar"></span></span>
         </header>
 
-        <section class="chat-stage" aria-label="Chat with kobajinAI">
-          <div class="welcome" id="welcome">
-            <h1 class="screen-reader">kobajinAI</h1>
-            <button class="core" id="core" type="button" aria-describedby="core-caption">
-              <svg class="core-ring" id="core-ring" viewBox="0 0 200 200" aria-hidden="true"></svg>
-              <span class="core-glow" aria-hidden="true"></span>
-              <span class="mark core-mark" aria-hidden="true"></span>
-            </button>
-            <p class="core-caption" id="core-caption"></p>
-          </div>
+        <section class="chat-stage" id="chat-stage" aria-label="Chat with kobajinAI">
+          <div class="thread" id="thread">
+            <div class="intro" id="welcome">
+              <span class="avatar avatar-large"><span class="logo-mark" aria-hidden="true"></span><span class="presence-dot" aria-hidden="true"></span></span>
+              <h1>kobajinAI</h1>
+              <p class="intro-copy">An experimental AI twin that learned how kobajin talks. It replies in casual Japanese, and it can be wrong about kobajin.</p>
+              <ul class="intro-facts">
+                <li><b>On your device.</b> Replies are generated in this browser; your messages aren't sent to a server.</li>
+                <li><b>No waiting to start.</b> Write now — your messages are delivered when it comes online.</li>
+              </ul>
 
-          <div class="messages" id="messages" aria-live="polite" hidden></div>
+              <div class="arrival" id="arrival" hidden>
+                <ol class="arrival-steps" aria-label="Loading steps">
+                  <li data-step="fetch"><span class="step-mark"></span><span class="step-name">Download</span><span class="step-note" id="step-fetch">2.2 GiB, once</span></li>
+                  <li data-step="load"><span class="step-mark"></span><span class="step-name">Load into memory</span><span class="step-note" id="step-load"></span></li>
+                  <li data-step="warm"><span class="step-mark"></span><span class="step-name">Warm up the GPU</span><span class="step-note" id="step-warm"></span></li>
+                </ol>
+                <p class="arrival-detail" id="progress-detail"></p>
+              </div>
+
+              <div class="starters" id="starters" aria-label="Conversation starters">
+                <button class="starter" type="button" data-prompt="はじめまして！">はじめまして！</button>
+                <button class="starter" type="button" data-prompt="好きな食べ物って何？">好きな食べ物って何？</button>
+                <button class="starter" type="button" data-prompt="何か作ったことある？">何か作ったことある？</button>
+              </div>
+            </div>
+            <div class="messages" id="messages" aria-live="polite"></div>
+          </div>
+          <button class="jump-latest" id="jump-latest" type="button" hidden>New messages ↓</button>
           <div class="screen-reader" id="live-status" role="status" aria-live="polite"></div>
         </section>
 
@@ -106,40 +110,35 @@
               </div>
               <button class="feed-post-now" id="feed-post-now" type="button" disabled>Post now</button>
             </div>
-            <p class="feed-note" title="Form, facts in the source, no invented experience, not a repeat, and a model fact-check">Reads a Wikipedia excerpt, drafts on this device, and posts only if five checks pass. It can still be wrong — follow the source.</p>
+            <p class="feed-note">kobajinAI reads a Wikipedia article and posts what it just learned. Posts are generated on this device and checked against the source, but can still be wrong — follow the source link.</p>
             <div class="feed-list" id="feed-list" aria-live="polite"></div>
           </div>
         </section>
 
-        <footer class="composer-area">
+        <footer class="composer-area" id="composer-area">
           <form class="composer" id="composer">
-            <button class="composer-add" id="composer-new-chat" type="button" aria-label="Start a new chat" title="New chat">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-            </button>
-            <textarea id="prompt" rows="1" aria-label="Message kobajinAI" placeholder="Message kobajinAI…"></textarea>
-            <div class="composer-tools">
-              <button id="send" class="send-button" type="submit" aria-label="Send message" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>
-            </div>
+            <textarea id="prompt" rows="1" aria-label="Message kobajinAI" aria-describedby="composer-hint" placeholder="Message kobajinAI…" enterkeyhint="send"></textarea>
+            <button id="stop" class="stop-button" type="button" aria-label="Stop the reply" title="Stop" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" /></svg></button>
+            <button id="send" class="send-button" type="submit" aria-label="Send message" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>
           </form>
-          <p class="composer-note" id="composer-note"></p>
+          <p class="composer-hint" id="composer-hint">Send a few short messages if you like — it waits until you pause, then answers them together.</p>
         </footer>
       </main>
     </div>
 
     <dialog class="about-dialog" id="about-dialog" aria-labelledby="about-title">
       <div class="dialog-heading">
-        <div><span class="eyebrow">Your local session</span><h2 id="about-title">Memory & privacy</h2></div>
+        <div><span class="eyebrow">Your local session</span><h2 id="about-title">Memory &amp; privacy</h2></div>
         <button class="icon-button dialog-close" id="about-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
       </div>
-      <p class="dialog-intro">kobajinAI is an experimental twin trained on how kobajin talks. It can be wrong about kobajin.</p>
       <div class="dialog-section">
-        <span class="dialog-icon">⌂</span><div><h3>Runs in your browser</h3><p>The model is downloaded to this device and replies are generated locally. Your chat messages are not sent to a server.</p><p class="dialog-device" id="dialog-device" hidden></p></div>
+        <span class="dialog-icon">⌂</span><div><h3>Runs in your browser</h3><p>The model is downloaded to this device and replies are generated locally. Your chat messages are not sent to a server.</p></div>
       </div>
       <div class="dialog-section">
-        <span class="dialog-icon">✳</span><div><h3>A few reviewed memories</h3><p>kobajinAI can use a small set of reviewed memories when they help answer a question. When it looks one up, the reply shows what it found — or that nothing confirmed was found. It should say when it does not know a personal detail.</p></div>
+        <span class="dialog-icon">✳</span><div><h3>A few reviewed memories</h3><p>kobajinAI can use a small set of reviewed memories when they help answer a question. Each reply says whether it looked one up and what it found. It should say when it does not know a personal detail.</p></div>
       </div>
       <div class="dialog-section">
-        <span class="dialog-icon">▤</span><div><h3>Conversation history</h3><p>Your recent chats are stored in this browser so you can come back to them. Clear them here at any time.</p></div>
+        <span class="dialog-icon">▤</span><div><h3>Conversation history</h3><p>Your recent chats are stored in this browser so you can come back to them. A message you sent before the model was ready, or while the page closed mid-reply, is kept and answered next time. Clear them here at any time.</p></div>
       </div>
       <div class="dialog-section">
         <span class="dialog-icon">≡</span><div><h3>Feed</h3><p>Feed posts, replies, and their check logs are kept in this browser only. The feed fetches article excerpts from Japanese Wikipedia; nothing you write is sent there.</p></div>
