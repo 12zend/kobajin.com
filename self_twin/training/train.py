@@ -109,6 +109,17 @@ def main() -> None:
     parser.add_argument("--max-seq-length", type=int, default=0, help="0 derives the cap from the training length distribution")
     parser.add_argument("--preflight-only", action="store_true", help="Load model, inspect targets and mask, then exit before training")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--train-file", type=Path, default=PROJECT / "dataset" / "train.jsonl")
+    parser.add_argument("--validation-file", type=Path, default=PROJECT / "dataset" / "validation.jsonl")
+    parser.add_argument(
+        "--validation-examples",
+        type=int,
+        default=0,
+        help="Fixed-seed validation subset size; 0 keeps the old behavior (200 for pilots, all for full runs)",
+    )
+    parser.add_argument("--eval-steps", type=int, default=0, help="Evaluate and save every N steps; 0 uses once per epoch")
+    parser.add_argument("--lr-scheduler", default="linear", choices=("linear", "cosine", "constant_with_warmup"))
+    parser.add_argument("--resume", action="store_true", help="Resume from the newest checkpoint in --output-dir")
     args = parser.parse_args()
 
     if args.revision in {"main", "latest", "PIN_EXACT_OFFICIAL_REVISION_BEFORE_LOAD"}:
@@ -218,8 +229,8 @@ def main() -> None:
     if any(any(part in name.lower() for part in excluded_fragments) for name in applied_targets):
         raise SystemExit("A LoRA adapter was attached to a vision, embedding, or LM-head module")
 
-    train_path = PROJECT / "dataset" / "train.jsonl"
-    valid_path = PROJECT / "dataset" / "validation.jsonl"
+    train_path = args.train_file
+    valid_path = args.validation_file
     with train_path.open(encoding="utf-8") as stream:
         train_rows = [json.loads(line) for line in stream if line.strip()]
     with valid_path.open(encoding="utf-8") as stream:
@@ -298,7 +309,10 @@ def main() -> None:
         raise SystemExit("No training rows fit the sequence budget without truncating assistant targets")
     train_count_after_filter = len(fitted_train_rows)
 
-    if args.pilot_examples:
+    if args.validation_examples:
+        random.Random(args.seed + 1).shuffle(valid_rows)
+        valid_rows = valid_rows[: min(args.validation_examples, len(valid_rows))]
+    elif args.pilot_examples:
         random.Random(args.seed + 1).shuffle(valid_rows)
         valid_rows = valid_rows[: min(200, len(valid_rows))]
     valid_rows.extend(synthetic_valid_rows)
@@ -354,6 +368,16 @@ def main() -> None:
         "training_enable_thinking": False,
         "learning_rate": args.learning_rate,
         "num_train_epochs": args.epochs,
+        "train_file": str(train_path),
+        "train_file_sha256": __import__("hashlib").sha256(train_path.read_bytes()).hexdigest(),
+        "validation_file": str(valid_path),
+        "validation_file_sha256": __import__("hashlib").sha256(valid_path.read_bytes()).hexdigest(),
+        "system_prompt_sha256_set": sorted({
+            __import__("hashlib").sha256(row["messages"][0]["content"].encode("utf-8")).hexdigest()
+            for row in train_rows
+        }),
+        "lr_scheduler": args.lr_scheduler,
+        "eval_steps": args.eval_steps,
         "status": "preflight_only",
     }
 
@@ -380,10 +404,15 @@ def main() -> None:
         bf16=True,
         max_length=max_length,
         assistant_only_loss=True,
-        eval_strategy="epoch",
-        save_strategy="epoch",
-        save_total_limit=2,
-        load_best_model_at_end=True,
+        eval_strategy="steps" if args.eval_steps else "epoch",
+        save_strategy="steps" if args.eval_steps else "epoch",
+        eval_steps=args.eval_steps or None,
+        save_steps=args.eval_steps or None,
+        # Step checkpoints are kept so the held-out likeness review can pick one;
+        # validation loss alone is not the selection criterion.
+        save_total_limit=None if args.eval_steps else 2,
+        load_best_model_at_end=not args.eval_steps,
+        lr_scheduler_type=args.lr_scheduler,
         metric_for_best_model="eval_loss",
         greater_is_better=False,
         prediction_loss_only=True,
@@ -494,7 +523,17 @@ def main() -> None:
     print(json.dumps(concise_report, ensure_ascii=False, indent=2))
     if args.preflight_only:
         return
-    train_result = trainer.train()
+    resume = None
+    if args.resume:
+        checkpoints = sorted(
+            (args.output_dir / "checkpoints").glob("checkpoint-*"),
+            key=lambda path: int(path.name.rsplit("-", 1)[1]),
+        )
+        if not checkpoints:
+            raise SystemExit("--resume was given but no checkpoint exists yet")
+        resume = str(checkpoints[-1])
+        print(f"Resuming from {resume}", flush=True)
+    train_result = trainer.train(resume_from_checkpoint=resume)
     model.config.use_cache = True
     trainer.save_model(str(args.output_dir / "adapter"))
     processor.save_pretrained(str(args.output_dir / "adapter"))

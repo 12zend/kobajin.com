@@ -1,0 +1,65 @@
+{
+  "seed": 20261120,
+  "test_rows_scored": 240,
+  "generation_rows": 30,
+  "max_length": 768,
+  "decoding": {
+    "temperature": 0.72,
+    "top_p": 1.0,
+    "repetition_penalty": 1.12
+  },
+  "system_prompts": {
+    "prod": "次のグループ会話の「自分」として、最後の発言に自然な返事だけをしてください。最新…"
+  },
+  "adapters": {
+    "ckpt2000": "adapter/experiment-r8-kobajin-clean-v1-lr5e5/checkpoints/checkpoint-2000"
+  },
+  "real_reference_style": {
+    "n": 30,
+    "median_chars": 14.5,
+    "share_le5_chars": 0.333,
+    "share_gt100_chars": 0.0,
+    "mean_lines": 1.93,
+    "keigo_rate": 0.0,
+    "assistantism_rate": 0.0,
+    "synthetic_template_rate": 0.0,
+    "placeholder_only_rate": 0.0,
+    "repeated_span_rate": 0.033,
+    "boku_rate": 0.1,
+    "laugh_w_rate": 0.0,
+    "char_bigram_jsd_vs_real": 0.7162
+  },
+  "candidates": {
+    "ckpt2000": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.8192,
+          "perplexity": 45.57,
+          "by_category": {
+            "conversation": 4.0036,
+            "long_explanation_or_story": 2.5651,
+            "question_or_prompt": 4.2132,
+            "reaction_or_joke": 5.0542,
+            "short_reaction": 3.7981,
+            "technical_or_project": 4.2882
+          }
+        }
+      },
+      "style": {
+        "n": 30,
+        "median_chars": 16.5,
+        "share_le5_chars": 0.267,
+        "share_gt100_chars": 0.067,
+        "mean_lines": 2.23,
+        "keigo_rate": 0.0,
+        "assistantism_rate": 0.0,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.033,
+        "boku_rate": 0.067,
+        "laugh_w_rate": 0.0,
+        "char_bigram_jsd_vs_real": 0.7372
+      }
+    }
+  }
+}
