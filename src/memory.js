@@ -64,3 +64,24 @@ export function getMemoryContext(query) {
   });
   return `今回の質問に関係する本人の確認済み記憶候補:\n${facts.join("\n")}\n記憶候補と質問の話題が一致するときだけ使う。`;
 }
+
+/**
+ * What the chat memory lookup did for `query`, for display only. It follows
+ * the same intent check and matching as getMemoryContext() and does not change
+ * the prompt. state: "none" (no lookup), "empty" (looked, nothing confirmed),
+ * or "found" (records were offered to the model as candidates).
+ */
+export function describeMemoryLookup(query) {
+  if (!MEMORY_INTENT.test(String(query || ""))) return { state: "none", records: [] };
+  const matches = matchRecords(String(query));
+  if (matches.length === 0) return { state: "empty", records: [] };
+  return {
+    state: "found",
+    records: matches.map(({ record }) => ({
+      memory_id: record.memory_id,
+      content: record.content,
+      observed_at: record.observed_at,
+      could_be_stale: Boolean(record.could_be_stale),
+    })),
+  };
+}

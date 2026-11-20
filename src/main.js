@@ -3,7 +3,7 @@ import {
   hasModelInCache,
   prebuiltAppConfig,
 } from "@mlc-ai/web-llm";
-import { getMemoryContext } from "./memory.js";
+import { describeMemoryLookup, getMemoryContext } from "./memory.js";
 import { createEngineScheduler } from "./agents.js";
 import { initFeed } from "./feed_view.js";
 import SYSTEM_PROMPT_SOURCE from "../self_twin/inference/system_prompt.txt?raw";
@@ -13,6 +13,7 @@ const MODEL_REVISION = "a2534a20253d54cce925307fbd76086498b09a11";
 const MODEL_ID = "kobajinAI-qwen35-4b-luna-v3-a2534a2-q4f16_1-MLC";
 const MODEL_URL = import.meta.env.VITE_MODEL_URL || `https://huggingface.co/kobajin/kobajinAI/resolve/${MODEL_REVISION}/`;
 const SYSTEM_PROMPT = SYSTEM_PROMPT_SOURCE.trim();
+const RING_TICKS = 72;
 const $ = (selector) => document.querySelector(selector);
 const welcome = $("#welcome");
 const messagesView = $("#messages");
@@ -21,11 +22,13 @@ const sendButton = $("#send");
 const loadButton = $("#load-model");
 const loadLabel = $("#load-label");
 const engineStatus = $("#engine-status");
-const progressWrap = $("#progress-wrap");
-const progressTitle = $("#progress-title");
-const progressPercent = $("#progress-percent");
-const progressBar = $("#progress-bar");
-const progressDetail = $("#progress-detail");
+const topbarProgressBar = $("#topbar-progress-bar");
+const core = $("#core");
+const coreCaption = $("#core-caption");
+const coreRing = $("#core-ring");
+const presenceLabel = $("#presence-label");
+const composerNote = $("#composer-note");
+const dialogDevice = $("#dialog-device");
 const liveStatus = $("#live-status");
 const conversationList = $("#conversation-list");
 const historyCount = $("#history-count");
@@ -46,11 +49,23 @@ let currentConversationId = null;
 const conversationStorageKey = "kobajinAI.conversations.v1";
 let savedConversations = readSavedConversations();
 let generating = false;
+// Enter during a reply queues the next message instead of dropping it.
+let queuedSend = false;
+let savedOnDevice = false;
+let gpuLabel = "";
+const loadState = { fetched: false, overall: 0 };
 const storagePersistence = requestStoragePersistence();
 // One engine serves chat and the feed; chat interrupts autonomous feed posts.
 const engineScheduler = createEngineScheduler();
 engineScheduler.setInterrupt(() => engine?.interruptGenerate());
 let feedVisible = false;
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
 
 function readSavedConversations() {
   try {
@@ -93,10 +108,7 @@ function renderConversationList() {
   conversationList.replaceChildren();
   historyCount.textContent = String(savedConversations.length);
   if (savedConversations.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "empty-history";
-    empty.textContent = "Your chats will appear here.";
-    conversationList.append(empty);
+    conversationList.append(element("p", "empty-history", "Your chats will appear here."));
     return;
   }
   for (const item of savedConversations) {
@@ -106,9 +118,7 @@ function renderConversationList() {
     button.dataset.conversationId = item.id;
     button.setAttribute("aria-current", item.id === currentConversationId ? "page" : "false");
     button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6.5A7.5 7.5 0 1 1 20 11.5Z" /></svg>';
-    const label = document.createElement("span");
-    label.textContent = item.title;
-    button.append(label);
+    button.append(element("span", "", item.title));
     conversationList.append(button);
   }
 }
@@ -121,21 +131,148 @@ async function requestStoragePersistence() {
   }
 }
 
+/* ---------- Presence: one state for "where is the twin right now" ---------- */
+
+function idlePresenceLabel() {
+  if (engine) return "On this device";
+  if (enginePromise) return `Arriving · ${Math.round(loadState.overall * 100)}%`;
+  return savedOnDevice ? "Saved on this device" : "Not on this device";
+}
+
+// absent | arriving | ready | reading | typing | error
+function setTwin(state, label = idlePresenceLabel()) {
+  document.body.dataset.twin = state;
+  presenceLabel.textContent = label;
+}
+
 function setStatus(kind, label) {
   engineStatus.className = `engine-status ${kind}`;
   engineStatus.querySelector("span").textContent = label;
 }
 
+// The welcome screen is only the mark. The caption under it speaks only when
+// there is something to say: a hint on hover/focus, live loading, or an error.
+function setCaption(text, kind = "hint") {
+  coreCaption.textContent = text;
+  coreCaption.dataset.kind = kind;
+}
+
+function idleCaption() {
+  if (engine) return "";
+  return savedOnDevice ? "Wake kobajinAI · saved in this browser" : "Bring kobajinAI here · ≈ 2.2 GiB, once";
+}
+
+function updateCore() {
+  const label = engine
+    ? "kobajinAI is here. Start typing."
+    : enginePromise
+      ? "kobajinAI is arriving on this device"
+      : savedOnDevice
+        ? "Wake kobajinAI. It is already saved in this browser."
+        : "Bring kobajinAI to this device. About 2.2 GiB, downloaded once.";
+  core.setAttribute("aria-label", label);
+  if (!enginePromise) setCaption(idleCaption());
+}
+
+function buildRing() {
+  const ns = "http://www.w3.org/2000/svg";
+  coreRing.replaceChildren();
+  for (let index = 0; index < RING_TICKS; index += 1) {
+    const tick = document.createElementNS(ns, "line");
+    const angle = (index / RING_TICKS) * Math.PI * 2 - Math.PI / 2;
+    const inner = 86;
+    const outer = 95;
+    tick.setAttribute("x1", (100 + Math.cos(angle) * inner).toFixed(2));
+    tick.setAttribute("y1", (100 + Math.sin(angle) * inner).toFixed(2));
+    tick.setAttribute("x2", (100 + Math.cos(angle) * outer).toFixed(2));
+    tick.setAttribute("y2", (100 + Math.sin(angle) * outer).toFixed(2));
+    tick.style.setProperty("--i", String(index));
+    coreRing.append(tick);
+  }
+}
+
+function paintRing(fraction) {
+  const lit = Math.round(Math.max(0, Math.min(1, fraction)) * RING_TICKS);
+  coreRing.querySelectorAll("line").forEach((tick, index) => {
+    tick.classList.toggle("lit", index < lit);
+    tick.classList.toggle("head", index === lit - 1 && lit < RING_TICKS);
+  });
+}
+
+function formatBytes(megabytes) {
+  if (!Number.isFinite(megabytes)) return "";
+  return megabytes >= 1024 ? `${(megabytes / 1024).toFixed(2)} GB` : `${megabytes} MB`;
+}
+
+let loadPhase = "Preparing";
+let loadDetail = "";
+
+function renderLoadCaption() {
+  const percentage = Math.round(loadState.overall * 100);
+  setCaption([`${loadPhase} ${percentage}%`, loadDetail].filter(Boolean).join(" · "), "progress");
+}
+
+function setOverall(value) {
+  loadState.overall = Math.max(loadState.overall, Math.max(0, Math.min(1, value)));
+  const percentage = Math.round(loadState.overall * 100);
+  topbarProgressBar.style.width = `${percentage}%`;
+  paintRing(loadState.overall);
+  if (enginePromise && !engine) {
+    presenceLabel.textContent = `Arriving · ${percentage}%`;
+    renderLoadCaption();
+  }
+  messagesView.querySelectorAll(".turn.pending .turn-status").forEach((node) => {
+    node.textContent = `Sends when kobajinAI arrives · ${percentage}%`;
+  });
+}
+
+// WebLLM reports each phase from 0 to 1 again; map them onto one honest line.
 function setLoadingProgress(progress) {
-  const percentage = Number.isFinite(progress?.progress)
-    ? Math.max(0, Math.min(100, Math.round(progress.progress * 100)))
-    : 0;
-  progressTitle.textContent = progress?.text || "Preparing your local session";
-  progressPercent.textContent = `${percentage}%`;
-  progressBar.style.width = `${percentage}%`;
-  progressDetail.textContent = percentage >= 99
-    ? "Warming up the model on this device…"
-    : "The first download is large. Your browser will cache it for next time.";
+  const text = String(progress?.text || "");
+  const fraction = Number.isFinite(progress?.progress) ? Math.max(0, Math.min(1, progress.progress)) : 0;
+  const shard = /\[(\d+)\/(\d+)\]/.exec(text);
+  const megabytes = /(\d+)MB/.exec(text);
+  const size = megabytes ? formatBytes(Number(megabytes[1])) : "";
+
+  if (text.startsWith("Fetching param cache")) {
+    loadState.fetched = true;
+    loadPhase = "Downloading";
+    loadDetail = [shard ? `shard ${shard[1]}/${shard[2]}` : "", size].filter(Boolean).join(" · ");
+    setOverall(fraction * 0.82);
+  } else if (text.startsWith("Loading model from cache")) {
+    loadPhase = "Loading onto GPU";
+    loadDetail = shard ? `shard ${shard[1]}/${shard[2]}` : "";
+    setOverall(loadState.fetched ? 0.82 + fraction * 0.08 : fraction * 0.9);
+  } else if (text.startsWith("Loading GPU shader")) {
+    loadPhase = "Compiling shaders";
+    loadDetail = "";
+    setOverall(0.9 + fraction * 0.09);
+  } else if (text.startsWith("Finish loading on")) {
+    gpuLabel = text.replace("Finish loading on", "").trim();
+    setOverall(1);
+  }
+}
+
+function buildAppConfig() {
+  const baseRecord = prebuiltAppConfig.model_list.find((item) => item.model_id === BASE_MODEL_ID);
+  if (!baseRecord) return null;
+  return {
+    ...prebuiltAppConfig,
+    model_list: [...prebuiltAppConfig.model_list, { ...baseRecord, model_id: MODEL_ID, model: MODEL_URL }],
+  };
+}
+
+function showArrivalError(detail) {
+  topbarProgressBar.style.width = "0%";
+  paintRing(0);
+  setCaption(detail, "error");
+}
+
+function updateComposerNote() {
+  if (engine) composerNote.textContent = "Generated on your device. It can be wrong about kobajin.";
+  else if (enginePromise) composerNote.textContent = "You can type now — it sends when kobajinAI arrives.";
+  else if (savedOnDevice) composerNote.textContent = "Saved in this browser — it wakes as you start typing.";
+  else composerNote.textContent = "Your first message brings kobajinAI to this device (≈ 2.2 GiB, once).";
 }
 
 async function loadModel() {
@@ -146,73 +283,68 @@ async function loadModel() {
     const message = "WebGPU is not available in this browser. Open this page in a recent desktop version of Chrome or Edge.";
     liveStatus.textContent = message;
     setStatus("error", "WebGPU unavailable");
-    progressWrap.hidden = false;
-    progressTitle.textContent = "This browser cannot run the local model";
-    progressPercent.textContent = "—";
-    progressBar.style.width = "0%";
-    progressDetail.textContent = message;
+    setTwin("error", "WebGPU unavailable");
+    showArrivalError(message);
     return null;
   }
 
-  const baseRecord = prebuiltAppConfig.model_list.find((item) => item.model_id === BASE_MODEL_ID);
-  if (!baseRecord) {
+  const appConfig = buildAppConfig();
+  if (!appConfig) {
     const message = `WebLLM ${BASE_MODEL_ID} runtime was not found. Refresh the app after updating its package.`;
     setStatus("error", "Model runtime unavailable");
-    progressWrap.hidden = false;
-    progressTitle.textContent = "This app version does not include the model runtime";
-    progressPercent.textContent = "!";
-    progressDetail.textContent = message;
+    setTwin("error", "Runtime unavailable");
+    showArrivalError(message);
     liveStatus.textContent = message;
     throw new Error(message);
   }
 
-  progressWrap.hidden = false;
+  loadState.fetched = false;
+  loadState.overall = 0;
+  loadPhase = savedOnDevice ? "Opening" : "Connecting";
+  loadDetail = "";
   loadButton.disabled = true;
   loadLabel.textContent = "Preparing local model…";
   setStatus("loading", "Loading model");
-  progressTitle.textContent = "Connecting to your model repository";
-  progressPercent.textContent = "0%";
-  progressBar.style.width = "0%";
   liveStatus.textContent = "Loading the kobajinAI model into this browser.";
 
-  const customRecord = {
-    ...baseRecord,
-    model_id: MODEL_ID,
-    model: MODEL_URL,
-  };
-  const appConfig = {
-    ...prebuiltAppConfig,
-    model_list: [...prebuiltAppConfig.model_list, customRecord],
-  };
-
-  let modelIsCached = false;
-  try {
-    modelIsCached = await hasModelInCache(MODEL_ID, appConfig);
-  } catch {
-    // A cache lookup failure should not stop the normal WebLLM load path.
-  }
-  progressTitle.textContent = modelIsCached
-    ? "Opening the model saved in this browser"
-    : "Downloading the model for the first time · about 2.2 GiB";
-  progressDetail.textContent = modelIsCached
-    ? "The model is already saved here. Preparing it for this session…"
-    : "The first download can take a while. The browser will keep it for next time.";
-  void storagePersistence;
-
   enginePromise = (async () => {
-    worker = new Worker(new URL("./webllm.worker.js", import.meta.url), { type: "module" });
-    engine = await CreateWebWorkerMLCEngine(worker, MODEL_ID, {
-      appConfig,
-      initProgressCallback: setLoadingProgress,
-    });
-    progressWrap.hidden = true;
+    try {
+      savedOnDevice = await hasModelInCache(MODEL_ID, appConfig);
+    } catch {
+      // A cache lookup failure should not stop the normal WebLLM load path.
+    }
+    loadPhase = savedOnDevice ? "Opening" : "Downloading";
+    renderLoadCaption();
+    void storagePersistence;
+    if (import.meta.env.DEV && new URLSearchParams(location.search).has("mock-engine")) {
+      const { createMockEngine } = await import("./dev_mock_engine.js");
+      engine = await createMockEngine(setLoadingProgress);
+    } else {
+      worker = new Worker(new URL("./webllm.worker.js", import.meta.url), { type: "module" });
+      engine = await CreateWebWorkerMLCEngine(worker, MODEL_ID, {
+        appConfig,
+        initProgressCallback: setLoadingProgress,
+      });
+    }
+    savedOnDevice = true;
+    setOverall(1);
+    setCaption("");
+    if (gpuLabel) {
+      dialogDevice.hidden = false;
+      dialogDevice.textContent = `This session: ${gpuLabel} · WebGPU`;
+      $("#presence").title = `Running on ${gpuLabel} through WebGPU`;
+    }
+    document.body.classList.add("twin-arrived");
     loadButton.classList.add("loaded");
     loadButton.disabled = true;
     loadLabel.textContent = "Model ready";
     loadButton.querySelector("svg").innerHTML = '<path d="m5 12 4 4L19 6" />';
     setStatus("ready", "Ready on this device");
-    liveStatus.textContent = "kobajinAI is ready in this browser.";
-    sendButton.disabled = !promptBox.value.trim();
+    if (!generating) setTwin("ready");
+    updateCore();
+    updateComposerNote();
+    liveStatus.textContent = gpuLabel ? `kobajinAI is ready, running on ${gpuLabel}.` : "kobajinAI is ready in this browser.";
+    updateSendButton();
     promptBox.focus();
     feed.refresh();
     return engine;
@@ -225,40 +357,209 @@ async function loadModel() {
     loadButton.disabled = false;
     loadLabel.textContent = "Try loading again";
     setStatus("error", "Could not load model");
-    progressTitle.textContent = "The model could not be loaded";
-    progressPercent.textContent = "!";
-    progressBar.style.width = "0%";
-    progressDetail.textContent = error?.message || "Check your connection and available browser storage, then try again.";
+    setTwin("error", "Could not load");
+    updateCore();
+    showArrivalError(`Couldn't load: ${error?.message || "check your connection and browser storage"}. Tap the mark to try again.`);
+    updateComposerNote();
     liveStatus.textContent = "The local model could not be loaded.";
     throw error;
   });
 
+  setTwin("arriving");
+  updateCore();
+  renderLoadCaption();
+  updateComposerNote();
   return enginePromise;
 }
 
-function appendMessage(role, content = "") {
-  const article = document.createElement("article");
-  article.className = `message ${role}`;
-  const body = document.createElement("div");
-  body.className = "message-body";
-  const text = document.createElement("div");
-  text.className = "message-text";
-  text.textContent = content;
-  body.append(text);
-  article.append(body);
-  messagesView.append(article);
+/* ---------- Messages: kobajin's line breaks become separate bubbles ---------- */
+
+function splitLines(text) {
+  return String(text || "").split(/\n+/).map((line) => line.trim()).filter(Boolean);
+}
+
+// The streamed text before final cleanup; hides reasoning tags while they form.
+function visibleStream(raw) {
+  return raw
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .replace(/<think>[\s\S]*$/i, "")
+    .replace(/<\/?think>/gi, "")
+    .replace(/<[^>\n]*$/, "")
+    .replace(/^\s+/, "");
+}
+
+function nearBottom() {
+  return chatStage.scrollHeight - chatStage.scrollTop - chatStage.clientHeight < 140;
+}
+
+function scrollToEnd(force = false) {
+  if (force || nearBottom()) chatStage.scrollTop = chatStage.scrollHeight;
+}
+
+function showMessages() {
   messagesView.hidden = false;
   welcome.hidden = true;
-  messagesView.scrollTop = messagesView.scrollHeight;
-  return text;
+}
+
+function createTurn(role) {
+  const turn = element("article", `turn ${role}`);
+  if (role === "assistant") {
+    const avatar = element("span", "turn-avatar");
+    avatar.setAttribute("aria-hidden", "true");
+    avatar.append(element("span", "mark"));
+    turn.append(avatar);
+  }
+  const body = element("div", "turn-body");
+  const bubbles = element("div", "bubbles");
+  body.append(bubbles);
+  turn.append(body);
+  messagesView.append(turn);
+  showMessages();
+  return { turn, body, bubbles };
+}
+
+function setBubbles(container, lines) {
+  const existing = [...container.querySelectorAll(".bubble:not(.ghost)")];
+  lines.forEach((line, index) => {
+    if (existing[index]) {
+      if (existing[index].textContent !== line) existing[index].textContent = line;
+    } else {
+      container.append(element("div", "bubble", line));
+    }
+  });
+  existing.slice(lines.length).forEach((node) => node.remove());
+}
+
+function formatSeconds(ms) {
+  return ms < 10_000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms / 1000)} s`;
+}
+
+function formatObserved(value) {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(value || ""));
+  return match ? match[1] : "";
+}
+
+function renderRecall(memory) {
+  if (!memory || memory.state === "none") return null;
+  const details = element("details", "recall");
+  details.dataset.state = memory.state;
+  const summary = element("summary");
+  const count = memory.records?.length || 0;
+  summary.append(
+    element("span", "recall-icon"),
+    element("span", "recall-label", memory.state === "found"
+      ? `Recalled ${count} reviewed ${count === 1 ? "memory" : "memories"}`
+      : "Looked for a memory · nothing confirmed"),
+  );
+  details.append(summary);
+  const panel = element("div", "recall-panel");
+  if (memory.state === "found") {
+    for (const record of memory.records) {
+      const item = element("div", "recall-item");
+      item.append(element("p", "recall-content", record.content));
+      const when = formatObserved(record.observed_at);
+      const note = [when ? `Noted ${when}` : "", record.could_be_stale ? "may be out of date" : ""].filter(Boolean).join(" · ");
+      if (note) item.append(element("p", "recall-note", note));
+      panel.append(item);
+    }
+    panel.append(element("p", "recall-foot", "Offered to the model as context for this reply. It may or may not use them."));
+  } else {
+    panel.append(element("p", "recall-foot", "No reviewed memory matched this question, so kobajinAI was told not to guess personal details."));
+  }
+  details.append(panel);
+  return details;
+}
+
+function renderMeta(message) {
+  if (!Number.isFinite(message?.ms)) return null;
+  return element("p", "turn-meta", `Generated on this device · ${formatSeconds(message.ms)}`);
+}
+
+function renderUserTurn(content) {
+  const view = createTurn("user");
+  view.bubbles.append(element("div", "bubble", content));
+  return view;
+}
+
+function renderAssistantTurn(message) {
+  const view = createTurn("assistant");
+  const recall = renderRecall(message.memory);
+  if (recall) view.body.insertBefore(recall, view.bubbles);
+  setBubbles(view.bubbles, splitLines(message.content));
+  const meta = renderMeta(message);
+  if (meta) view.body.append(meta);
+  return view;
+}
+
+function createLiveReply(memory) {
+  const view = createTurn("assistant");
+  view.turn.classList.add("live");
+  const recall = renderRecall(memory);
+  if (recall) view.body.insertBefore(recall, view.bubbles);
+  const status = element("p", "turn-status");
+  view.body.append(status);
+  let ghost = null;
+  let committed = 0;
+
+  return {
+    phase(name, label) {
+      view.turn.dataset.phase = name;
+      status.textContent = label;
+      scrollToEnd();
+    },
+    stream(raw) {
+      const parts = visibleStream(raw).split("\n");
+      const partial = parts.pop() || "";
+      const done = parts.map((line) => line.trim()).filter(Boolean);
+      while (committed < done.length) {
+        const bubble = element("div", "bubble arrived", done[committed]);
+        view.bubbles.insertBefore(bubble, ghost);
+        committed += 1;
+      }
+      if (partial.trim()) {
+        if (!ghost) {
+          ghost = element("div", "bubble ghost");
+          ghost.setAttribute("aria-hidden", "true");
+          view.bubbles.append(ghost);
+        }
+        ghost.textContent = partial.trim();
+      } else if (ghost) {
+        ghost.remove();
+        ghost = null;
+      }
+      scrollToEnd();
+    },
+    finish(message) {
+      ghost?.remove();
+      ghost = null;
+      setBubbles(view.bubbles, splitLines(message.content));
+      status.remove();
+      const meta = renderMeta(message);
+      if (meta) view.body.append(meta);
+      view.turn.classList.remove("live");
+      delete view.turn.dataset.phase;
+      scrollToEnd();
+    },
+    fail(text) {
+      ghost?.remove();
+      status.remove();
+      view.bubbles.replaceChildren(element("div", "bubble message-error", text));
+      view.turn.classList.remove("live");
+      delete view.turn.dataset.phase;
+    },
+  };
 }
 
 function renderConversationMessages() {
   messagesView.replaceChildren();
   messagesView.hidden = true;
   welcome.hidden = true;
-  for (const message of conversation) appendMessage(message.role, message.content);
+  for (const message of conversation) {
+    if (message.role === "assistant") renderAssistantTurn(message);
+    else renderUserTurn(message.content);
+  }
   if (conversation.length === 0) welcome.hidden = false;
+  scrollToEnd(true);
 }
 
 async function openConversation(id) {
@@ -337,12 +638,20 @@ function formatConversationLog(messages) {
   }).join("\n");
 }
 
+function updateSendButton() {
+  const hasText = Boolean(promptBox.value.trim());
+  if (!hasText) queuedSend = false;
+  sendButton.disabled = !hasText || queuedSend;
+  sendButton.classList.toggle("queued", queuedSend);
+  sendButton.setAttribute("aria-label", queuedSend
+    ? "Queued — sends after this reply"
+    : generating ? "Queue message for after this reply" : "Send message");
+}
+
 function setBusy(busy) {
   generating = busy;
-  sendButton.disabled = busy || !promptBox.value.trim();
   sendButton.classList.toggle("busy", busy);
-  sendButton.setAttribute("aria-label", busy ? "Generating response" : "Send message");
-  promptBox.disabled = busy;
+  updateSendButton();
   document.body.classList.toggle("is-generating", busy);
 }
 
@@ -350,20 +659,50 @@ async function sendMessage(text) {
   const value = text.trim();
   if (!value || generating) return;
   setBusy(true);
-  let responseView = null;
+  let reply = null;
   let engineLease = null;
+  const sentAt = Date.now();
+
+  // Show the visitor's message right away; if the twin is still arriving it waits here.
+  const userView = renderUserTurn(value);
+  promptBox.value = "";
+  resizePrompt();
+  scrollToEnd(true);
+  let model = engine;
+  if (!model) {
+    userView.turn.classList.add("pending");
+    const waiting = element("p", "turn-status", "Sends when kobajinAI arrives");
+    userView.body.append(waiting);
+    try {
+      model = await loadModel();
+    } catch {
+      model = null;
+    }
+    waiting.remove();
+    userView.turn.classList.remove("pending");
+    if (!model) {
+      userView.turn.remove();
+      if (messagesView.children.length === 0) {
+        messagesView.hidden = true;
+        welcome.hidden = false;
+      }
+      queuedSend = false;
+      if (!promptBox.value.trim()) promptBox.value = value;
+      setBusy(false);
+      resizePrompt();
+      return;
+    }
+  }
 
   try {
-    const model = await loadModel();
-    if (!model) return;
-    conversation.push({ role: "user", content: value, timestamp: Date.now() });
+    conversation.push({ role: "user", content: value, timestamp: sentAt });
     saveCurrentConversation();
-    appendMessage("user", value);
-    promptBox.value = "";
-    resizePrompt();
-    responseView = appendMessage("assistant", "");
-    responseView.classList.add("streaming");
+    const memory = describeMemoryLookup(value);
+    reply = createLiveReply(memory);
+    reply.phase("reading", memory.state === "found" ? "Recalled a memory · reading the conversation" : "Reading the conversation");
+    setTwin("reading", "Reading…");
     engineLease = await engineScheduler.acquire("chat", { priority: true });
+    const startedAt = performance.now();
     const memoryContext = getMemoryContext(value);
     const systemPrompt = memoryContext ? `${SYSTEM_PROMPT}\n\n${memoryContext}` : SYSTEM_PROMPT;
     const chunks = await model.chat.completions.create({
@@ -379,40 +718,55 @@ async function sendMessage(text) {
       stream: true,
     });
     let rawReply = "";
+    let typing = false;
     for await (const chunk of chunks) {
       const delta = chunk.choices?.[0]?.delta?.content;
       if (typeof delta === "string" && delta.length > 0) {
         rawReply += delta;
+        if (!typing && visibleStream(rawReply).trim()) {
+          typing = true;
+          reply.phase("typing", "");
+          setTwin("typing", "Typing…");
+        }
+        reply.stream(rawReply);
       }
     }
-    const reply = toUserFacingReply(rawReply, value);
-    responseView.classList.remove("streaming");
-    responseView.textContent = reply;
-    conversation.push({ role: "assistant", content: reply, timestamp: Date.now() });
+    const content = toUserFacingReply(rawReply, value);
+    const message = {
+      role: "assistant",
+      content,
+      timestamp: Date.now(),
+      ms: Math.round(performance.now() - startedAt),
+    };
+    if (memory.state !== "none") message.memory = memory;
+    reply.finish(message);
+    conversation.push(message);
     saveCurrentConversation();
-    liveStatus.textContent = "Response complete.";
+    liveStatus.textContent = `kobajinAI: ${splitLines(content).join(" / ")}`;
   } catch (error) {
     console.error("kobajinAI response generation failed", error);
-    if (responseView) {
-      responseView.classList.remove("streaming");
-      responseView.classList.add("message-error");
-      responseView.textContent = /[\u3040-\u30ff\u3400-\u9fff]/.test(value)
-        ? "うまく返せませんでした。もう一度お試しください。"
-        : "I couldn't generate a reply. Please try again.";
-    }
+    reply?.fail(/[぀-ヿ㐀-鿿]/.test(value)
+      ? "うまく返せませんでした。もう一度お試しください。"
+      : "I couldn't generate a reply. Please try again.");
     liveStatus.textContent = "There was a problem generating a response.";
   } finally {
     engineLease?.release();
     setBusy(false);
+    setTwin(engine ? "ready" : "absent");
     promptBox.focus();
-    sendButton.disabled = !promptBox.value.trim();
+    if (queuedSend && promptBox.value.trim()) {
+      queuedSend = false;
+      setTimeout(() => { void sendMessage(promptBox.value); }, 120);
+    }
+    updateSendButton();
   }
 }
 
 function resizePrompt() {
   promptBox.style.height = "auto";
   promptBox.style.height = `${Math.min(promptBox.scrollHeight, 180)}px`;
-  sendButton.disabled = generating || !promptBox.value.trim();
+  updateSendButton();
+  document.body.classList.toggle("is-composing", Boolean(promptBox.value.trim()) && !generating);
 }
 
 function toUserFacingReply(output, userMessage) {
@@ -434,21 +788,62 @@ function toUserFacingReply(output, userMessage) {
 
   reply = reply.trim();
   if (reply) return reply;
-  return /[\u3040-\u30ff\u3400-\u9fff]/.test(userMessage)
+  return /[぀-ヿ㐀-鿿]/.test(userMessage)
     ? "ごめんなさい。短い返事を作れませんでした。もう一度お願いします。"
     : "Sorry, I couldn't produce a clear reply. Please try again.";
+}
+
+async function detectSavedModel() {
+  if (!navigator.gpu) {
+    setTwin("error", "WebGPU unavailable");
+    setStatus("error", "WebGPU unavailable");
+    setCaption("This browser has no WebGPU. Try a recent desktop Chrome or Edge.", "error");
+    core.disabled = true;
+    composerNote.textContent = "This browser can't run kobajinAI (no WebGPU).";
+    return;
+  }
+  const appConfig = buildAppConfig();
+  if (!appConfig) return;
+  try {
+    savedOnDevice = await hasModelInCache(MODEL_ID, appConfig);
+  } catch {
+    savedOnDevice = false;
+  }
+  if (savedOnDevice && !engine && !enginePromise) {
+    loadLabel.textContent = "Open saved model";
+    setTwin("absent");
+    updateCore();
+    updateComposerNote();
+  }
 }
 
 loadButton.addEventListener("click", () => {
   loadModel().catch(() => {});
 });
+core.addEventListener("click", () => {
+  if (engine) promptBox.focus();
+  else loadModel().catch(() => {});
+});
 
 $("#composer").addEventListener("submit", (event) => {
   event.preventDefault();
+  if (generating) {
+    if (promptBox.value.trim()) {
+      queuedSend = true;
+      updateSendButton();
+      liveStatus.textContent = "Queued. It sends after this reply.";
+    }
+    return;
+  }
   void sendMessage(promptBox.value);
 });
 
-promptBox.addEventListener("input", resizePrompt);
+promptBox.addEventListener("input", () => {
+  resizePrompt();
+  // A model already saved in this browser costs no download, so start waking it
+  // on the first keystroke; by the time the message is sent it is mostly ready.
+  if (savedOnDevice && !engine && !enginePromise && promptBox.value.trim()) loadModel().catch(() => {});
+});
 promptBox.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
     event.preventDefault();
@@ -492,14 +887,6 @@ $("#clear-history").addEventListener("click", () => {
   aboutDialog.close();
 });
 
-document.querySelectorAll("[data-prompt]").forEach((button) => {
-  button.addEventListener("click", () => {
-    promptBox.value = button.dataset.prompt || "";
-    resizePrompt();
-    promptBox.focus();
-  });
-});
-
 document.addEventListener("keydown", (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
     event.preventDefault();
@@ -508,7 +895,12 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeSidebar();
 });
 
+buildRing();
+paintRing(0);
 renderConversationList();
+updateCore();
+updateComposerNote();
+void detectSavedModel();
 
 const feed = initFeed({
   scheduler: engineScheduler,

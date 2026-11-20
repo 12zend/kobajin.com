@@ -58,6 +58,7 @@ export function initFeed({ scheduler, getEngine, isChatBusy, modelId, announce }
   let lastActivity = Date.now();
   let lastAutoRun = 0;
   const openThreads = new Set();
+  const openChecks = new Set();
   const replyingPosts = new Set();
 
   const storeReady = openFeedStore().then(async (opened) => {
@@ -90,12 +91,18 @@ export function initFeed({ scheduler, getEngine, isChatBusy, modelId, announce }
     container.replaceChildren();
     for (const reply of post.replies) {
       const row = element("div", `thread-message ${reply.role}`);
-      row.append(element("div", "thread-text", reply.content));
+      // kobajin's line breaks read as separate messages, like the chat view.
+      const lines = reply.role === "assistant"
+        ? reply.content.split(/\n+/).map((line) => line.trim()).filter(Boolean)
+        : [reply.content];
+      for (const line of lines.length ? lines : [reply.content]) row.append(element("div", "thread-text", line));
       container.append(row);
     }
     if (replyingPosts.has(post.id)) {
       const row = element("div", "thread-message assistant");
-      row.append(element("div", "thread-text streaming"));
+      const typing = element("div", "thread-text streaming");
+      typing.setAttribute("aria-label", "kobajinAI is replying");
+      row.append(typing);
       container.append(row);
     }
     const form = element("form", "thread-form");
@@ -112,14 +119,70 @@ export function initFeed({ scheduler, getEngine, isChatBusy, modelId, announce }
     container.append(form);
   }
 
+  const CHECK_LABELS = [
+    ["form", "Form"],
+    ["fact_rule", "Facts in source"],
+    ["identity", "No invented experience"],
+    ["novelty", "Not a repeat"],
+    ["fact_model", "Model fact-check"],
+  ];
+
+  function checkPassed(key, value) {
+    if (key === "fact_model") return value === "supported";
+    if (key === "identity") return value === "pass" || value === "backed_by_memory";
+    return value === "pass";
+  }
+
+  // The accepted attempt's gate results, as recorded in the post log.
+  function renderChecks(post) {
+    const verdicts = Array.isArray(post.log?.verdicts) ? post.log.verdicts : [];
+    const final = verdicts[verdicts.length - 1];
+    if (!final) return null;
+    const passed = CHECK_LABELS.filter(([key]) => checkPassed(key, final[key]));
+    const details = element("details", "feed-checks");
+    details.dataset.postId = post.id;
+    details.open = openChecks.has(post.id);
+    const summary = element("summary");
+    const redrafts = Number(post.log?.retries) || 0;
+    summary.append(
+      element("span", "feed-checks-dot"),
+      element("span", "", `${passed.length}/${CHECK_LABELS.length} checks passed${redrafts ? ` · after ${redrafts} redraft${redrafts === 1 ? "" : "s"}` : ""}`),
+    );
+    details.append(summary);
+    const listNode = element("ul", "feed-check-list");
+    for (const [key, label] of CHECK_LABELS) {
+      const ok = checkPassed(key, final[key]);
+      const item = element("li", ok ? "ok" : "miss", key === "identity" && final[key] === "backed_by_memory" ? "Backed by a reviewed memory" : label);
+      listNode.append(item);
+    }
+    details.append(listNode);
+    if (post.log?.seed?.angle) {
+      const angle = element("p", "feed-angle");
+      angle.append(element("span", "", "Angle the model picked: "), document.createTextNode(post.log.seed.angle));
+      details.append(angle);
+    }
+    return details;
+  }
+
+  function renderWorkingCard() {
+    const card = element("div", "feed-working");
+    card.setAttribute("role", "status");
+    const avatar = element("span", "feed-avatar");
+    avatar.setAttribute("aria-hidden", "true");
+    avatar.append(element("span", "mark"));
+    const copy = element("div", "feed-working-copy");
+    copy.append(element("p", "feed-working-label", jobLabel || "Writing a post…"), element("p", "feed-working-sub", "Drafts are checked before anything is posted. A draft that fails is dropped."));
+    card.append(avatar, copy, element("span", "feed-working-scan"));
+    return card;
+  }
+
   function render() {
     updateStatus();
     if (!list) return;
     list.replaceChildren();
+    if (tweetJob) list.append(renderWorkingCard());
     if (posts.length === 0) {
-      list.append(element("p", "feed-empty", tweetJob
-        ? "kobajinAI is reading something on Wikipedia…"
-        : "No posts yet. kobajinAI posts here after reading a Wikipedia article."));
+      if (!tweetJob) list.append(element("p", "feed-empty", "No posts yet. kobajinAI posts here after reading a Wikipedia article."));
       return;
     }
     for (const post of posts) {
@@ -127,20 +190,21 @@ export function initFeed({ scheduler, getEngine, isChatBusy, modelId, announce }
       card.dataset.postId = post.id;
 
       const head = element("div", "feed-post-head");
-      const avatar = element("img", "feed-avatar");
-      avatar.src = "/logo.svg";
-      avatar.alt = "";
+      const avatar = element("span", "feed-avatar");
+      avatar.setAttribute("aria-hidden", "true");
+      avatar.append(element("span", "mark"));
       head.append(avatar, element("span", "feed-name", "kobajinAI"), element("span", "feed-time", formatTime(post.createdAt)));
 
-      const text = element("p", "feed-text", post.text);
-
       const source = element("p", "feed-source");
-      source.append("Source: ");
+      source.append(element("span", "feed-source-verb", "Read "));
       const link = element("a", "", `Wikipedia「${post.source.title}」`);
       link.href = post.source.url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      source.append(link, ` · ${post.source.license || WIKIPEDIA_LICENSE}`);
+      source.append(link, element("span", "feed-license", ` · ${post.source.license || WIKIPEDIA_LICENSE}`));
+
+      const text = element("p", "feed-text", post.text);
+      const checks = renderChecks(post);
 
       const actions = element("div", "feed-actions");
       const replyButton = element("button", "feed-reply-toggle", post.replies.length ? `Reply · ${post.replies.length}` : "Reply");
@@ -149,7 +213,9 @@ export function initFeed({ scheduler, getEngine, isChatBusy, modelId, announce }
       replyButton.setAttribute("aria-expanded", String(openThreads.has(post.id)));
       actions.append(replyButton);
 
-      card.append(head, text, source, actions);
+      card.append(head, source, text);
+      if (checks) card.append(checks);
+      card.append(actions);
       if (openThreads.has(post.id)) {
         const thread = element("div", "feed-thread");
         renderThread(post, thread);
@@ -175,8 +241,10 @@ export function initFeed({ scheduler, getEngine, isChatBusy, modelId, announce }
         ...logs.slice(0, RECENT_ATTEMPT_WINDOW).map((log) => log.url).filter(Boolean),
       ]);
       const article = await fetchArticle({ exclude, signal: lease.signal });
-      jobLabel = `Reading「${article.title}」…`;
+      jobLabel = `Reading「${article.title}」and drafting…`;
       updateStatus();
+      const label = list?.querySelector(".feed-working-label");
+      if (label) label.textContent = jobLabel;
       const result = await composeTweet(engine, article, {
         recentTexts: posts.map((post) => post.text),
         modelId,
@@ -247,6 +315,13 @@ export function initFeed({ scheduler, getEngine, isChatBusy, modelId, announce }
     render();
     if (openThreads.has(id)) list.querySelector(`.thread-form[data-post-id="${CSS.escape(id)}"] textarea`)?.focus();
   });
+  // <details> toggle does not bubble; keep check lists open across re-renders.
+  list.addEventListener("toggle", (event) => {
+    const details = event.target;
+    if (!details.matches?.(".feed-checks")) return;
+    if (details.open) openChecks.add(details.dataset.postId);
+    else openChecks.delete(details.dataset.postId);
+  }, true);
   list.addEventListener("submit", (event) => {
     const form = event.target.closest(".thread-form");
     if (!form) return;
