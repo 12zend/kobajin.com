@@ -2,6 +2,15 @@
 
 ## 状態
 
+2026-11-20 v1の問題を直すための再学習v2（`adapter/experiment-r8-kobajin-clean-v2-memory/`）を開始した。ベースは同じrevision。データは`training/build_kobajin_train_v2.py`でv1から作った`kobajin_clean_v2`（train 17,405行）。
+
+- 記憶の不使用への対策: サイトと同じ形式（本番system prompt＋`getMemoryContext()`の記憶ブロック）の行を追加した。記憶候補には、実返事に含まれる本人の発言そのもの（144件）を、確認済み記録と同じ「本人が「…」と発言」という形で引用する。各発言から、無関係な記憶0〜2件を混ぜた2行を作って288行。さらに、会話と無関係な記憶だけが入っていて実返事が記憶を使わない行を400行入れた。評価で使う3件の記憶（民謡・TextBlur・ナナチキ）とその出典メッセージは使っていない。疑問文と6字未満の発言は記憶候補から外した。
+- 「うんこ」の多用への対策: 「うんこ」を含むtargetを1/3に間引いた（80行を除外）。
+- 匿名化ラベル漏れへの対策: 「【参加者】」を含むtarget 641行を除外し、targetから「【URL】」を取り除いた。validationにも同じ除外を適用した（2,705行）。
+- prompt: 本番promptだけの行を15%（2,557行）混ぜた。記憶行も本番promptなので、本番promptの行は全体の約20%。max sequence lengthは768（本番prompt行が512を超えるため）。
+- 学習設定はv1と同じ。rank 8、LR 5e-5、cosine、1 epoch、17,400 steps、2,000 stepごとにcheckpointを保存。smoke test（24例）は正常に完了した。
+- 評価: 終了後に全checkpointのlikeness評価、固定35件のbenchmark、`evaluation/memory_use_eval.py`を自動で実行する。memory_use_evalはtest split（学習に未使用）から作った記憶の使用テストで、関係する記憶29件と無関係な記憶40件を使い、base・v3・v1・v2を同じ条件で比べる。
+
 2026-11-20 本人らしさ重視のbase再学習（`adapter/experiment-r8-kobajin-clean-v1-lr5e5/`）の準備と開始。学習前に次を確認・変更した。
 
 - 評価: `evaluation/kobajin_likeness.py`を追加。時系列test（学習に未使用）240件で本人の実際の返事のtoken NLLと、60件をサイトと同じ設定で生成した文体プロファイル（長さ、敬語、アシスタント口調、合成テンプレ句、placeholder、反復）を測る。基準値はbase NLL `4.826`、公開中v3 `4.332`、full_v1 `3.691`（本番system prompt）。本人の実返事は中央値9.5字・5字以下32%（test全体は14字・27%）。v3は合成テンプレ句（「小さく試」など）が5%出て、本人の実データにない口癖を持ち込んでいた。char-bigram JSDは長文ほど低く出るため判断材料にしない。
