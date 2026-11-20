@@ -15,6 +15,7 @@ Read `PRODUCT.md` before changing this project. The project represents kobajin; 
 ## Git milestones
 
 - Work on `main` unless the owner asks for another branch.
+- Every agent commits to `main`, including parallel or background sessions. Do not leave finished work on a separate branch such as a `claude/*` worktree branch. If a session has to work in its own worktree, bring its commits onto `main` when the work is done, by fast-forward or cherry-pick, and then remove the temporary branch and worktree.
 - At meaningful, reviewable milestones, commit the focused project changes to `main`. Check the staged diff and exclude model weights, private data, credentials, and generated runtime bundles unless they are explicitly intended source assets.
 - Do not push Git commits unless the owner explicitly asks.
 
