@@ -460,13 +460,18 @@
           decoding: { temperature: 0.9, top_p: 1, repetition_penalty: 1.12, max_tokens: 32 },
         },
         reply: {
-          system: "SNSで他人の投稿に返信する。10文字以内で、相手の言葉を拾って短く反応する。",
+          system: "SNSで他人の投稿に返信する。10文字以内で、相手の言葉を拾って短く反応する。暴言や物騒な投稿には同調も復唱もせず、軽くツッコむか心配する。",
           // `parent` is set when the text is itself a reply: what it answers.
           user: ({ text, parent, others }) => `${parent ? `元の発言: ${parent}\nそれへの返信: ${text}\nこの返信に返す。` : `投稿: ${text}`}${others.length ? `\nほかの返信（同じことは言わない）: ${others.join(" / ")}` : ""}`,
           decoding: { temperature: 0.8, top_p: 1, repetition_penalty: 1.12, max_tokens: 20 },
         },
+        react: {
+          system: `次の投稿に絵文字1つだけでリアクションする。候補: ${"🤔 👍 😂 🫠 😭 👀 🔥 💯 😨"}。投稿の内容と温度に合うものを選ぶ。`,
+          user: ({ text }) => `投稿: ${text}`,
+          decoding: { temperature: 0.7, top_p: 1, repetition_penalty: 1.0, max_tokens: 4 },
+        },
         judge: {
-          system: "次の投稿に共感できるか、面白いと思ったら「はい」、そうでなければ「いいえ」とだけ答える。",
+          system: "次の投稿に共感できるか、面白いと思ったら「はい」、そうでなければ「いいえ」とだけ答える。暴言や物騒な投稿は「いいえ」。",
           user: ({ text }) => `投稿: ${text}`,
           decoding: { temperature: 0, top_p: 1, repetition_penalty: 1.0, max_tokens: 4 },
         },
@@ -479,6 +484,8 @@
 
       // Kinds of post. Each auto post asks for a kind the timeline has not
       // used lately, so the feed does not settle on one mood.
+      const REACTION_EMOJI = ["🤔", "👍", "😂", "🫠", "😭", "👀", "🔥", "💯", "😨"];
+
       const POST_KINDS = ["疑問", "ツッコミ", "感心", "テンション", "作業", "考えごと", "天気・季節", "やりたいこと", "眠い"];
 
       const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -502,20 +509,42 @@
           "眠い": ["もう寝たい", "ねむすぎて終わった"],
         };
         // Replies follow the post: its own words first, then its tone.
+        // "harsh" comes first: insults and threats get pushback, never an
+        // echo or agreement. The lookaheads keep 少しねむい and カスタム out.
         const TONES = [
+          ["harsh", /死ね|しね(?![ぁ-んァ-ヴ])|殺す|ころす|ぶっ殺|ぶっころ|ぶっとば|消えろ|きえろ|くたばれ|黙れ|だまれ|うざい|ウザい|きもい|キモい|カス(?![ァ-ヴ])|滅べ|滅びろ|爆破/],
           ["question", /[?？]\s*$|なんで|どう|なに|何|どっち/],
           ["funny", /草|笑|w\s*$|ｗ|ウケ|おもろ|じわ/],
           ["rough", /疲|眠|ねむ|寝|無理|つら|しんど|過密|忙|だる|痛|寒|暑|やば|終わ|詰|きつ|多すぎ|足りな|ない$/],
           ["happy", /できた|完成|勝|最高|好き|楽し|うま|嬉|うれし|神|優勝|天才|いいこと|やった|かわい|すごい|きれい/],
         ];
         const TONE_REPLIES = {
+          harsh: ["落ち着け", "物騒すぎる", "どうした急に", "言い方よ", "こわ", "治安わるい", "それは言いすぎ", "なにがあった", "一回寝よ", "深呼吸しよ", "荒れてるな", "強火すぎる", "穏やかにいこ", "ストレスたまってる？"],
           question: ["たしかに？", "わからん", "むずい", "どうなんやろ", "気になる", "それはそう"],
           funny: ["草", "おもろ", "それは草", "じわる", "笑った"],
           rough: ["それはえぐい", "おつかれ", "それはきつい", "わかる", "しんどいな", "えぐいって"],
           happy: ["天才か", "いいね", "強い", "最高やん", "えらい", "優勝"],
           neutral: ["たしかに？", "それはそう", "わかる", "なるほど", "それな", "ほんまそれ"],
+          // A shout, catchphrase, or anything that is not an opinion: agreeing
+          // makes no sense, so be curious instead.
+          odd: ["なにそれ", "どうした急に", "急に？", "唐突すぎる", "テンション高", "元気やな", "詳しく", "ほう"],
+        };
+        // Agreement only fits a statement, which has hiragana in it. A post
+        // with none (ブンブン, 全力ダッシュ!!) gets the curious lines.
+        const replyTone = (text) => {
+          const tone = toneOf(text);
+          if (tone !== "neutral") return tone;
+          return /[ぁ-ん]/.test(text.replace(/@[A-Za-z0-9_]+/g, "")) ? "neutral" : "odd";
         };
         const toneOf = (text) => (TONES.find(([, pattern]) => pattern.test(text)) || ["neutral"])[0];
+        const TONE_EMOJI = {
+          harsh: ["😨", "😨", "👀", "🫠"],
+          funny: ["😂", "😂", "🤔"],
+          rough: ["🫠", "😭", "🫠", "🤔"],
+          happy: ["🔥", "💯", "👍"],
+          question: ["🤔", "🤔", "👀"],
+          neutral: ["🤔", "👀", "🤔"],
+        };
 
         const GREETINGS = [
           [/おはよ/, ["おはよう", "おは", "おはよー", "はやいな"]],
@@ -523,6 +552,7 @@
           [/こんにちは|こんちゃ/, ["こんにちは", "こんちゃ", "やっほー"]],
           [/こんばんは/, ["こんばんは", "ばんは", "やっほー"]],
           [/ただいま/, ["おかえり", "おかえりー", "おつかれ"]],
+          [/ハロー|hello|やっほ|ヤッホー|おっす|よっす|^やあ/i, ["ハロー", "やっほー", "よっ", "元気やな", "おっす"]],
         ];
 
         const NOUN_ECHOES = {
@@ -531,10 +561,11 @@
           rough: (w) => [`${w}えぐい`, `${w}おつかれ`, `${w}はきつい`, `${w}しんどいな`],
           happy: (w) => [`${w}いいな`, `${w}最高`, `${w}強い`],
           neutral: (w) => [`${w}いいな`, `${w}気になる`, `${w}かぁ`, `${w}わかる`],
+          odd: (w) => [`${w}って何`, `急に${w}`, `${w}？`],
         };
 
         function echoes(word, tone) {
-          if (!word) return [];
+          if (!word || tone === "harsh") return [];
           const adjective = /[ぁ-ん]い$/.test(word) || /^[一-龠々]+い$/.test(word);
           const lines = adjective && tone !== "question"
             ? [`${word}よな`, `まじ${word}`, `${word}のわかる`, `わかる、${word}`]
@@ -549,13 +580,20 @@
         const used = [];
 
         function keyword(text) {
-          const bare = text.replace(/@[A-Za-z0-9_]+/g, "").replace(/[\s?？!！。、.,…ー〜~wｗ]+$/g, "").replace(/^[\s#＃]+/, "");
+          // Trailing ー after katakana belongs to the word (ハロー), so it stays.
+          const bare = text.replace(/@[A-Za-z0-9_]+/g, "")
+            .replace(/[\s?？!！。、.,…〜~wｗ|｜¥\\]+$/g, "").replace(/(?<![ァ-ヴ])ー+$/, "")
+            .replace(/^[\s#＃]+/, "");
           // A short post is its own keyword when it is one word: no kana
           // (過密, ラーメン) or a lone adjective (ねむい, 眠い).
           const oneWord = !/[ぁ-ん]/.test(bare) || (/^[一-龠々ぁ-ん]+い$/.test(bare) && !/[がをにはでとも]/.test(bare.slice(1, -1)));
           if (bare && chars(bare).length <= 4 && oneWord) return bare;
-          const match = bare.match(/[ァ-ヴー]{2,6}|[一-龠々]{2,4}|[A-Za-z]{2,8}/);
-          return match ? match[0] : "";
+          // Whole runs only: a cut word (ブンブンハロ) reads wrong. Long runs
+          // drop out later at the length check.
+          // Katakana and English words before kanji, and time words (今日,
+          // 最近) are never the topic: 今日ラーメン食べた is about ラーメン.
+          const kanji = (bare.match(/[一-龠々]{2,4}/g) || []).filter((word) => !/^(今日|昨日|明日|今週|来週|先週|今年|最近|今朝|今夜|毎日|全員|自分|本当|普通)$/.test(word));
+          return (bare.match(/[ァ-ヴ][ァ-ヴー]+/) || bare.match(/[A-Za-z]{2,}/) || kanji)[0] || "";
         }
 
         return {
@@ -576,7 +614,7 @@
               const fresh = (list) => list.filter((line) => !others.includes(line));
               const greeting = GREETINGS.find(([pattern]) => pattern.test(text));
               if (greeting && fresh(greeting[1]).length) return pick(fresh(greeting[1]));
-              const tone = toneOf(text);
+              const tone = replyTone(text);
               const echoable = tone !== "question" || chars(text) <= 7;
               const echo = echoable ? fresh(echoes(keyword(text), tone)) : [];
               // The first reply picks up the post's own words; later ones
@@ -585,8 +623,9 @@
               const pool = useEcho ? echo : fresh(TONE_REPLIES[tone]);
               return pick(pool.length ? pool : TONE_REPLIES[tone]);
             }
+            if (task === "react") return pick(TONE_EMOJI[toneOf(input.text || "")]);
             if (task === "judge") {
-              const chance = { funny: 0.9, happy: 0.85, rough: 0.75, question: 0.5, neutral: 0.4 }[toneOf(input.text || "")];
+              const chance = { harsh: 0, funny: 0.9, happy: 0.85, rough: 0.75, question: 0.5, neutral: 0.4 }[toneOf(input.text || "")];
               return Math.random() < chance ? "はい" : "いいえ";
             }
             if (task === "trend") return shuffle(TRENDS).slice(0, input.count).join("\n");
@@ -655,6 +694,11 @@
         async reply({ text, parent = null }, others) {
           const raw = await enqueue(PRIORITY.visitor, () => llm.complete("reply", { text, parent, others: others() }));
           return clean(raw, 10);
+        },
+        // One emoji for the post; anything off the list falls back to 🤔.
+        async react(text) {
+          const raw = await enqueue(PRIORITY.visitor, () => llm.complete("react", { text }));
+          return REACTION_EMOJI.find((emoji) => String(raw).includes(emoji)) || "🤔";
         },
         async judge(text) {
           const raw = await enqueue(PRIORITY.visitor, () => llm.complete("judge", { text }));
@@ -997,18 +1041,19 @@
         }
       }
 
-      // The visitor posts. kobajin reacts 🤔 first after a short, uneven pause,
-      // then the other kobajins pile on one by one. kobajinAI judges the post;
-      // if it likes it, 👍 shows up and grows, and some fans repost it. A few
-      // short replies arrive too.
+      // The visitor posts. kobajinAI picks an emoji that fits the post;
+      // kobajin reacts with it first after a short, uneven pause, then the
+      // other kobajins pile on one by one, now and then with 👀 instead.
+      // kobajinAI judges the post; if it likes it, 👍 shows up and grows, and
+      // some fans repost it. A few short replies arrive too.
       function choreograph(post) {
         const thinkers = shuffle(ALTS).slice(0, randInt(2, ALTS.length));
         (async () => {
-          await sleep(rand(1100, 2600));
-          react(post, "🤔", SELF.id);
+          const [emoji] = await Promise.all([brain.react(withoutMentions(post.text)), sleep(rand(1100, 2600))]);
+          react(post, emoji, SELF.id);
           for (const account of thinkers) {
             await sleep(rand(700, 2800));
-            react(post, "🤔", account.id);
+            react(post, Math.random() < 0.8 ? emoji : "👀", account.id);
           }
         })();
 
@@ -1046,7 +1091,11 @@
         responders.forEach((account, index) => {
           replyAs(post, account, rand(1500, 2800) + index * rand(1400, 2600), reply).catch(console.error);
         });
-        if (!target.visitor && Math.random() < 0.6) setTimeout(() => react(post, pick(["🤔", "👍"]), toId), rand(900, 2000));
+        if (!target.visitor && Math.random() < 0.6) {
+          Promise.all([brain.react(withoutMentions(text)), sleep(rand(900, 2000))])
+            .then(([emoji]) => react(post, emoji, toId))
+            .catch(console.error);
+        }
       }
 
       let toastTimer = 0;
