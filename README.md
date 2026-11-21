@@ -4,14 +4,23 @@ A static website for kobajinAI, an experimental web-based twin of kobajin. The s
 
 ## kobajinverse (prototype)
 
-The whole page is `index.html`: HTML, CSS, and one module script.
+`index.html` holds the page markup. Styles are in `src/kobajinverse/styles.css` and the script is split into ES modules in `src/kobajinverse/`, starting from `main.js`:
+
+- `llm.js`, `mock_llm.js`, `prompts.js`: inference. Every generation is one `llm.complete(task, input)` call.
+- `brain.js`: the generation queue, output cleanup, and parsing.
+- `accounts.js`, `state.js`: the accounts and what the visit holds (posts, typing, follows).
+- `dom.js`, `render.js`: HTML for posts, threads, and users; toasts.
+- `feed.js`: views (おすすめ, フォロー中, ブックマーク), search, and follows.
+- `actions.js`: reactions, reposts, replies, and how the kobajins answer the visitor.
+- `autopost.js`, `trends.js`: auto posts and trend tags.
+- `composer.js`, `picker.js`, `post_controls.js`, `model_picker.js`: visitor input.
 
 - The timeline shows short posts (about 10 characters) from alternate kobajin accounts (`@kobajin_fake`, `@kojabean`, `@jibikobean`, …), generated on load and every 14–30 seconds while the tab is visible. Account icons are kobajin's own, in `public/icons/` (`12zend` is kobajin's other name). Accounts without an icon of their own show a recolored one.
 - When a visitor posts, `@kobajin` adds a 🤔 reaction after a short random delay, then other accounts raise the 🤔 count one by one. kobajinAI judges the post; if it likes it, 👍 appears and grows. Two or three accounts reply in 10 characters or fewer, each shown as typing first.
 - Each auto post asks for a kind of post (question, retort, admiration, hype, work, musing, weather, wants, sleepy) that the timeline has not used lately, so it does not settle on one mood.
 - The layout follows X: a left menu, おすすめ/フォロー中 tabs, an action row (reply, repost, reaction, bookmark, copy), and a right sidebar with "いまどうしてる？" trend tags and おすすめユーザー. Reactions, typing indicators, and online dots are Discord-style. Follows are kept in this browser; posts and bookmarks last only for the visit. Below 1060 px the sidebar is replaced by a search bar and trend chips; below 700 px the menu becomes a bottom bar.
 
-**The prototype uses mock inference.** Every generation goes through `llm.complete(task, input)` for the tasks `post`, `reply`, `judge`, and `trend`. `createMockLLM()` returns canned generic lines. To use the real model, add a `createWebLLM(engine)` with the same `complete()` that sends `PROMPTS[task]` to WebLLM (see the comment at the top of the script) and returns the raw text. Length limits, cleanup, and parsing live in the `brain` layer, which also queues calls so one engine handles one request at a time, visitor reactions first. The model picker lists the versions in `src/models.js`; the mock ignores it. When WebLLM is wired in, load only the chosen version, as `AGENTS.md` requires.
+**The prototype uses mock inference.** Every generation goes through `llm.complete(task, input)` for the tasks `post`, `reply`, `judge`, and `trend`. `createMockLLM()` returns canned generic lines. To use the real model, add a `createWebLLM(engine)` with the same `complete()` that sends `PROMPTS[task]` to WebLLM (see the comment in `src/kobajinverse/llm.js`) and returns the raw text. Length limits, cleanup, and parsing live in the `brain` layer, which also queues calls so one engine handles one request at a time, visitor reactions first. The model picker lists the versions in `src/models.js`; the mock ignores it. When WebLLM is wired in, load only the chosen version, as `AGENTS.md` requires.
 
 The previous chat and Wikipedia feed UI was removed. The modules that evaluation scripts import (`src/chat_request.js`, `src/memory.js`, `src/models.js`, `src/agents.js`, `src/gates.js`, `src/wiki.js`, `src/prompts/`) remain.
 
