@@ -2,6 +2,13 @@
 
 ## 状態
 
+2026-11-21 v1〜v3のGGUF Q4_K_Mと、HFのmodel cardを公開した（ownerの依頼）。
+
+- 各バージョンのマージ済みBF16 checkpointをllama.cpp `d81235049`でGGUFに変換し、`Q4_K_M`（imatrixなし、5.13 BPW、各2.71 GB）に量子化した。`kobajin/kobajinAI`の`gguf/`に追加（commit [`a64b0e7`](https://huggingface.co/kobajin/kobajinAI/commit/a64b0e78e9a80d5ae17677b49ac4677ab4d0d82b)）。サイトはWebLLMの`q4f16_1`バンドルを使い続け、固定revisionのバンドルは変わっていないことをファイル単位で確認した。手順とsha256は`gguf/README.md`。
+- マージ済みcheckpointは`config.json`に`mtp_num_hidden_layers: 1`が残る一方、Transformersが`mtp.*`の重みを落としているため、`--no-mtp`で変換した（MTPなし、vision encoderなし）。
+- v2のGGUFを、WebLLMパリティと同じ8件（greedy、repetition penaltyなし）でTransformersと比べた。プロンプトは8/8で一致し、返事の一致は6/8（WebLLM `q4f16_1`は4/8）。「好きな食べ物は何？」の初手「う」は0.042（Transformers 0.043）。8件だけなので、Q4_K_Mが一般に`q4f16_1`より近いとは言えない。v1・v3はサイトのデコードで読み込みと返事だけ確認した。
+- HFのREADMEをmodel cardとして書いた（元は`license`だけ）。`base_model: Qwen/Qwen3.5-4B`、`base_model_relation: finetune`、タグをメタデータに入れた（commit [`46b03fa`](https://huggingface.co/kobajin/kobajinAI/commit/46b03fab0c85e1948ce39514f903ec84bf212166)）。原稿は`webllm/hf_model_card.md`。
+
 2026-11-21 WebLLM（サイト）と評価（Transformers）のずれを修正・計測。詳細は`webllm/README.md`の「WebLLM and Transformers parity」。
 
 - サイトのプロンプトは公開bundleの会話テンプレートと`enable_thinking: false`が重なり、末尾が`assistant\n<think>\n<think>\n\n</think>\n\n`だった（学習・評価にない形）。`src/chat_request.js`で上書きし、Transformersと文字単位で一致（実WebLLMで8/8）。

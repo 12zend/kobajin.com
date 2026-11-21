@@ -1,0 +1,242 @@
+{
+ "summary": {
+  "prompts": 8,
+  "prompt_matches_transformers": 8,
+  "greedy_identical": 6,
+  "same_first_60_chars": 0
+ },
+ "rows": [
+  {
+   "prompt": "好きな食べ物は何？",
+   "llama_cpp_prompt_matches_transformers": true,
+   "gguf": "うーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\n",
+   "transformers": "うーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん",
+   "identical_over_common_length": true,
+   "first_token_top5": [
+    [
+     "う",
+     0.0422
+    ],
+    [
+     "ラーメン",
+     0.0208
+    ],
+    [
+     "お",
+     0.0189
+    ],
+    [
+     "え",
+     0.0139
+    ],
+    [
+     "カレー",
+     0.0113
+    ]
+   ]
+  },
+  {
+   "prompt": "民謡習ってたってほんと？",
+   "llama_cpp_prompt_matches_transformers": true,
+   "gguf": "うん",
+   "transformers": "うん",
+   "identical_over_common_length": true,
+   "first_token_top5": [
+    [
+     "う",
+     0.1327
+    ],
+    [
+     "え",
+     0.1065
+    ],
+    [
+     "そう",
+     0.0425
+    ],
+    [
+     "あ",
+     0.0269
+    ],
+    [
+     "僕",
+     0.0157
+    ]
+   ]
+  },
+  {
+   "prompt": "TextBlurって何作ったの？",
+   "llama_cpp_prompt_matches_transformers": true,
+   "gguf": "テキストのぼかし",
+   "transformers": "テキストのぼかし",
+   "identical_over_common_length": true,
+   "first_token_top5": [
+    [
+     "テキスト",
+     0.0481
+    ],
+    [
+     "あ",
+     0.0329
+    ],
+    [
+     "Text",
+     0.0299
+    ],
+    [
+     "え",
+     0.0227
+    ],
+    [
+     "text",
+     0.0175
+    ]
+   ]
+  },
+  {
+   "prompt": "好きなスポーツは？",
+   "llama_cpp_prompt_matches_transformers": true,
+   "gguf": "サッカー",
+   "transformers": "サッカー",
+   "identical_over_common_length": true,
+   "first_token_top5": [
+    [
+     "サッカー",
+     0.0662
+    ],
+    [
+     "バ",
+     0.0261
+    ],
+    [
+     "テ",
+     0.0254
+    ],
+    [
+     "野球",
+     0.0158
+    ],
+    [
+     "バス",
+     0.0155
+    ]
+   ]
+  },
+  {
+   "prompt": "名前なんていうの？",
+   "llama_cpp_prompt_matches_transformers": true,
+   "gguf": "あー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\n",
+   "transformers": "あー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー",
+   "identical_over_common_length": true,
+   "first_token_top5": [
+    [
+     "あ",
+     0.0388
+    ],
+    [
+     "え",
+     0.0286
+    ],
+    [
+     "名前",
+     0.0268
+    ],
+    [
+     "僕",
+     0.0216
+    ],
+    [
+     "う",
+     0.0208
+    ]
+   ]
+  },
+  {
+   "prompt": "おはよう",
+   "llama_cpp_prompt_matches_transformers": true,
+   "gguf": "おはよう",
+   "transformers": "おはよう",
+   "identical_over_common_length": true,
+   "first_token_top5": [
+    [
+     "お",
+     0.5235
+    ],
+    [
+     "おお",
+     0.0216
+    ],
+    [
+     "は",
+     0.0172
+    ],
+    [
+     "o",
+     0.015
+    ],
+    [
+     "あ",
+     0.0148
+    ]
+   ]
+  },
+  {
+   "prompt": "明日テストなんだけど何から勉強すればいい？",
+   "llama_cpp_prompt_matches_transformers": true,
+   "gguf": "えぇ\n何のテスト？",
+   "transformers": "えぇ\n僕も明日テスト",
+   "identical_over_common_length": false,
+   "first_token_top5": [
+    [
+     "え",
+     0.036
+    ],
+    [
+     "数学",
+     0.023
+    ],
+    [
+     "教科",
+     0.0219
+    ],
+    [
+     "自分",
+     0.0194
+    ],
+    [
+     "何",
+     0.0194
+    ]
+   ]
+  },
+  {
+   "prompt": "最近寒すぎない？",
+   "llama_cpp_prompt_matches_transformers": true,
+   "gguf": "うん",
+   "transformers": "えぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい",
+   "identical_over_common_length": false,
+   "first_token_top5": [
+    [
+     "う",
+     0.11
+    ],
+    [
+     "え",
+     0.0989
+    ],
+    [
+     "あ",
+     0.0437
+    ],
+    [
+     "そう",
+     0.0354
+    ],
+    [
+     "いや",
+     0.0214
+    ]
+   ]
+  }
+ ]
+}

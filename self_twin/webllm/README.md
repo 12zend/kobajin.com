@@ -12,6 +12,8 @@ The owner decided on 2026-11-21 to publish every trained version (see `AGENTS.md
 | v2 | `v2/` at [`1f9287d`](https://huggingface.co/kobajin/kobajinAI/commit/1f9287d837eb311f5d0ab9262240ab2ed362d87c) | `self_twin/adapter/experiment-r8-kobajin-clean-v2-memory/adapter` | Real chats plus memory-grounded rows; 2/3 fixed memory questions answered with the memory. The site's default since 2026-11-21. |
 | v3 | repository root at `a2534a20253d54cce925307fbd76086498b09a11` | `self_twin/adapter/experiment-r8-luna-synthetic-1000-v3/adapter` | Mostly Luna-written synthetic examples. |
 
+The same repository also has GGUF `Q4_K_M` files of every version in `gguf/` for llama.cpp; the site does not use them (see `self_twin/gguf/README.md`). The repository's `README.md` is the model card in `hf_model_card.md`; upload it again when a version is added.
+
 Each merged checkpoint is in `self_twin/merged/qwen35_4b_self_twin_*` with a `merge_receipt.json` (base revision, adapter hash). v1 and v2 were merged with `training/merge_adapter.py --owner-release vN`. Evaluation results are in `self_twin/training/training_report.md`.
 
 ## v3 release (2026-11-19)

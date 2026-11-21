@@ -37,3 +37,8 @@ merged/qwen35_4b_self_twin_experimental_*/*
 webllm/hf-upload/
 webllm/mlc-input/
 evaluation/webllm_parity/*heldout*
+
+# GGUF conversions for Hugging Face.
+gguf/build/
+gguf/*.log
+gguf/hf-upload/
