@@ -1,5 +1,5 @@
 // Emoji picker: reacts on a post, or types into the composer.
-const PICKER_EMOJI = ["🤔", "👍", "😂", "🫠", "😭", "👀", "🔥", "💯"];
+import { REACTION_EMOJI as PICKER_EMOJI } from "./prompts.js";
 let picker = null;
 
 function closePicker() { picker?.remove(); picker = null; }

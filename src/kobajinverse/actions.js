@@ -1,6 +1,6 @@
 import { ACCOUNTS, ALTS, SELF, VISITOR } from "./accounts.js";
 import { PRIORITY, brain } from "./brain.js";
-import { REACTION_EMOJI } from "./prompts.js";
+import { findReaction } from "./prompts.js";
 import { replyNeed } from "./reply_decision.js";
 import { say } from "./dom.js";
 import { notify } from "./notifications.js";
@@ -74,8 +74,7 @@ export function reactToReply(post, reply, emoji, accountId) {
 // The emoji for a line that gets no answer: one the line itself used, or
 // one that fits its kind, from the reaction list.
 function ackEmoji(need) {
-  const fits = need.emoji.filter((emoji) => REACTION_EMOJI.includes(emoji));
-  return fits.length ? fits[0] : "👍";
+  return need.emoji.map(findReaction).find(Boolean) || "👍";
 }
 
 function acknowledge(post, reply, account, need) {
@@ -117,7 +116,7 @@ export async function replyAs(post, account, delay, reply = null, priority = PRI
 
 // The visitor posts. kobajinAI picks an emoji that fits the post;
 // kobajin reacts with it first after a short, uneven pause, then the
-// other kobajins pile on one by one, now and then with 👀 instead.
+// other kobajins pile on one by one, now and then with 👍 instead.
 // kobajinAI judges the post; if it likes it, 👍 shows up and grows, and
 // some fans repost it. A few short replies arrive too.
 export function choreograph(post) {
@@ -127,7 +126,7 @@ export function choreograph(post) {
     react(post, emoji, SELF.id);
     for (const account of thinkers) {
       await sleep(rand(700, 2800));
-      react(post, Math.random() < 0.8 ? emoji : "👀", account.id);
+      react(post, Math.random() < 0.8 ? emoji : "👍", account.id);
     }
   })().catch(console.error);
 

@@ -39,11 +39,11 @@ const REQUEST = /(して|しよ|しよう|してや|してよ|してな|して�
 const ENDING = "(わ|な|ね|よ|よな|よね|やん|っす|です|ですね|ます|すぎる|すぎ)?";
 const lexicon = (words) => new RegExp(`^(${words})${ENDING}$`, "i");
 const KINDS = [
-  ["thanks", lexicon("ありがと(う|う?ございます)?|ありがたい|あり|あざ(す|っす|ます)?|さんきゅ|サンキュ|thx|thanks|ty|感謝"), 0.3, ["👍", "🔥"]],
-  ["agree", lexicon("わかる|わかりみ|わかります|それな|それはそう|ほんまそれ|ほんとそれ|まじそれ|マジそれ|たしかに|確かに|せやな|せやね|せやろ|せやんな|そうやな|そうだね|そうだよね|そうよな|そう|うん|うんうん|ね|なるほど|なる|了解|りょ|りょうかい|おけ|おっけ|ok|おk|いいね|いいよ|やろ|でしょ|だよね|よな|それある|あるある|同じく|同感|ほんま|まじか|マジか|へ|へえ|ほう|ふむ|あーね|あね"), 0.3, ["👍", "💯", "👍"]],
-  ["praise", lexicon("天才|神|すごい|すご|えらい|最高|強い|つよ|さすが|かわいい|きれい|かっこいい"), 0.4, ["🔥", "💯"]],
-  ["cheer", lexicon("おつかれ(さま)?|お疲れ(様)?|おつ|がんばれ|頑張れ|がんば|ファイト|応援してる"), 0.4, ["🔥", "👍"]],
-  ["laugh", lexicon("それは草|わろた|ワロタ|わら|おもろ|おもしろ|面白い|じわる|ウケる|うける"), 0.25, ["😂"]],
+  ["thanks", lexicon("ありがと(う|う?ございます)?|ありがたい|あり|あざ(す|っす|ます)?|さんきゅ|サンキュ|thx|thanks|ty|感謝"), 0.3, ["❤️", "👍"]],
+  ["agree", lexicon("わかる|わかりみ|わかります|それな|それはそう|ほんまそれ|ほんとそれ|まじそれ|マジそれ|たしかに|確かに|せやな|せやね|せやろ|せやんな|そうやな|そうだね|そうだよね|そうよな|そう|うん|うんうん|ね|なるほど|なる|了解|りょ|りょうかい|おけ|おっけ|ok|おk|いいね|いいよ|やろ|でしょ|だよね|よな|それある|あるある|同じく|同感|ほんま|まじか|マジか|へ|へえ|ほう|ふむ|あーね|あね"), 0.3, ["👍"]],
+  ["praise", lexicon("天才|神|すごい|すご|えらい|最高|強い|つよ|さすが|かわいい|きれい|かっこいい"), 0.4, ["❤️", "👍"]],
+  ["cheer", lexicon("おつかれ(さま)?|お疲れ(様)?|おつ|がんばれ|頑張れ|がんば|ファイト|応援してる"), 0.4, ["❤️", "👍"]],
+  ["laugh", lexicon("それは草|わろた|ワロタ|わら|おもろ|おもしろ|面白い|じわる|ウケる|うける"), 0.25, ["👍", "❤️"]],
 ];
 const LAUGH = /^(草|笑|w|ｗ)+$/i;
 const TRAILING_LAUGH = /(草|笑|w|ｗ)+$/i;
@@ -56,7 +56,7 @@ const need = (kind, chance = 1, emoji = []) => ({ need: chance >= 1 ? "reply" : 
 
 export function replyNeed(text) {
   const raw = String(text || "").replace(MENTION, "").trim();
-  if (!raw) return need("empty", 0, ["👀"]);
+  if (!raw) return need("empty", 0, ["👍"]);
   if (DETAIL.test(raw)) return need("detail");
   if (QUESTION.test(raw) || GUESS.test(raw)) return need("question");
   if (GREETING.test(raw)) return need("greeting");
@@ -64,7 +64,7 @@ export function replyNeed(text) {
   const bare = core(raw);
   // Only emoji or marks (👍, ！！, …): answer in kind, now and then a word.
   if (!bare) return need("reaction", 0.1, [...new Set(raw.match(EMOJI) || [])]);
-  if (LAUGH.test(bare)) return need("laugh", 0.25, ["😂"]);
+  if (LAUGH.test(bare)) return need("laugh", 0.25, ["👍", "❤️"]);
   if (REQUEST.test(bare)) return need("request");
   const plain = bare.replace(TRAILING_LAUGH, "") || bare;
   for (const [kind, pattern, chance, emoji] of KINDS) {

@@ -106,12 +106,12 @@ export function createMockLLM() {
   };
   const toneOf = (text) => (TONES.find(([, pattern]) => pattern.test(text)) || ["neutral"])[0];
   const TONE_EMOJI = {
-    harsh: ["😨", "😨", "👀", "🫠"],
-    funny: ["😂", "😂", "🤔"],
-    rough: ["🫠", "😭", "🫠", "🤔"],
-    happy: ["🔥", "💯", "👍"],
-    question: ["🤔", "🤔", "👀"],
-    neutral: ["🤔", "👀", "🤔"],
+    harsh: ["⁉️", "⁉️", "😥"],
+    funny: ["👍", "❤️", "👍"],
+    rough: ["😥", "😥", "❤️", "🤔"],
+    happy: ["❤️", "👍", "❤️"],
+    question: ["🤔", "🤔", "❓"],
+    neutral: ["🤔", "👍", "🤔"],
   };
 
   const GREETINGS = [

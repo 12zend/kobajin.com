@@ -1,5 +1,5 @@
 import { llm } from "./llm.js";
-import { POST_KINDS, REACTION_EMOJI } from "./prompts.js";
+import { POST_KINDS, findReaction } from "./prompts.js";
 import { DETAIL } from "./reply_decision.js";
 import { HARSH, rejectReason } from "./safety.js";
 import { chars, pick, sleep } from "./util.js";
@@ -120,7 +120,7 @@ export const brain = {
   // One emoji for the post; anything off the list falls back to 🤔.
   async react(text) {
     const raw = await enqueue(PRIORITY.visitor, () => llm.complete("react", { text }));
-    return REACTION_EMOJI.find((emoji) => String(raw).includes(emoji)) || "🤔";
+    return findReaction(raw) || "🤔";
   },
   // The kobajinAI versions answer 「いい」 more often than 「はい」, even to
   // insults, so an insult is never liked whatever the model says.

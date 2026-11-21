@@ -42,7 +42,7 @@ async function autoPost({ createdAt, quiet = false } = {}) {
   arrive(post);
   // Other kobajins notice it.
   shuffle(ALTS.filter((alt) => alt.id !== account.id)).slice(0, randInt(0, 3)).forEach((alt, index) => {
-    setTimeout(() => react(post, pick(["🤔", "👍", "🤔", "😂"]), alt.id), rand(2500, 6000) + index * 2000);
+    setTimeout(() => react(post, pick(["🤔", "👍", "🤔", "❤️"]), alt.id), rand(2500, 6000) + index * 2000);
   });
   if (Math.random() < (llm.name === "mock" ? 0.45 : 0.3)) banter(post).catch(console.error);
   return post;

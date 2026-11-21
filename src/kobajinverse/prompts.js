@@ -15,9 +15,19 @@ const SYSTEM_PROMPT = SYSTEM_PROMPT_SOURCE.trim();
 // this place and the account's style. The tasks that only classify (react,
 // judge, trend) use a plain instruction instead.
 
-// The emoji a reaction may use. The react prompt lists them and brain.js
-// falls back to 🤔 for anything else.
-export const REACTION_EMOJI = ["🤔", "👍", "😂", "🫠", "😭", "👀", "🔥", "💯", "😨"];
+// The only emoji a reaction may use (the owner chose these six on
+// 2026-11-21). The react prompt and the picker list them, brain.js falls
+// back to 🤔 for anything else, and saved reactions with other emoji are
+// dropped on load (store.js).
+export const REACTION_EMOJI = ["🤔", "❓", "👍", "❤️", "⁉️", "😥"];
+
+// The reaction emoji a text contains, or "". ❤ and ⁉ come with or without
+// the emoji variation selector, so it is ignored when comparing.
+const bare = (text) => String(text).replace(/\uFE0F/g, "");
+export function findReaction(text) {
+  const plain = bare(text);
+  return REACTION_EMOJI.find((emoji) => plain.includes(bare(emoji))) || "";
+}
 
 // Kinds of post. Each auto post asks for a kind the timeline has not
 // used lately, so the feed does not settle on one mood.

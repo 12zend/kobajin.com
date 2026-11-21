@@ -1,4 +1,5 @@
 import { ACCOUNTS } from "./accounts.js";
+import { REACTION_EMOJI } from "./prompts.js";
 import { adoptPost, posts } from "./state.js";
 
 // Saves the timeline in this browser, so a visit picks up where the last
@@ -10,6 +11,8 @@ const MAX_POSTS = 80;
 let timer = 0;
 
 const known = (id) => Boolean(ACCOUNTS[id]);
+// Reactions saved before the six emoji (prompts.js) are dropped.
+const allowed = (emoji) => REACTION_EMOJI.includes(emoji);
 
 function serialize(post) {
   return {
@@ -28,7 +31,7 @@ function serialize(post) {
 // Reactions on a reply: { emoji: [accountId, ...] }, known accounts only.
 function reviveReply(reply) {
   const reactions = Object.fromEntries(Object.entries(reply.reactions && typeof reply.reactions === "object" ? reply.reactions : {})
-    .map(([emoji, who]) => [emoji, Array.isArray(who) ? who.filter(known) : []])
+    .map(([emoji, who]) => [emoji, allowed(emoji) && Array.isArray(who) ? who.filter(known) : []])
     .filter(([, who]) => who.length));
   const { reactions: _, ...rest } = reply;
   return Object.keys(reactions).length ? { ...rest, reactions } : rest;
@@ -42,7 +45,7 @@ function revive(data) {
     text: data.text,
     createdAt: Number(data.createdAt) || Date.now(),
     source: data.source || "",
-    reactions: new Map((data.reactions || []).map(([emoji, who]) => [emoji, new Set((who || []).filter(known))]).filter(([, who]) => who.size)),
+    reactions: new Map((data.reactions || []).filter(([emoji]) => allowed(emoji)).map(([emoji, who]) => [emoji, new Set((who || []).filter(known))]).filter(([, who]) => who.size)),
     reposts: new Set((data.reposts || []).filter(known)),
     bookmarked: Boolean(data.bookmarked),
     replies: (data.replies || []).filter((reply) => known(reply.authorId) && known(reply.toId) && typeof reply.text === "string").map(reviveReply),
