@@ -11,7 +11,7 @@
 - 判断: 低メモリ枠はQwen3.5-0.8BではなくLFM2.5-1.2B-JP（revision `52b8b44`、LFM Open License v1.0）にする。WebLLMの既製ライブラリ（`LFM2.5-1.2B-Instruct-q4f16_1`）と同じ形で、必要VRAMの目安は約1.0 GB（Qwen3.5-0.8Bは1.6 GB）。8GBのMac向けはQwen3.5-2B（revision `15852e8`）。
 - 本学習: `training/run_small_v2.sh`でLFM、続けてQwen3.5-2Bを順に学習する。引数はv2（`adapter/experiment-r8-kobajin-clean-v2-memory/preflight.json`）と同じ（全17,405行、rank 8、LR 5e-5、cosine、1 epoch、max length 768、2,000 stepごとにcheckpoint、seed 42）。v2は`--pilot-examples 0`（全件）で学習されていたことをpreflightの比較で確認した。Qwen 0.8Bのpreflightは、モデル名とTRLのテンプレート名以外v2と一致した（最初の例の境界も279トークン）。LFMは1行だけ、本番system promptと返事だけで768トークンを超えるため除外され、17,399行になる。
 - `train.py`の変更: `--model-id`を追加した（`download_base_model.py`、`merge_adapter.py`も同じ）。LFMのチャットテンプレートはTRLが学習用に変換できないため、`{% generation %}`印だけを足した写し（`training/chat_templates/lfm2_5_jp_training.jinja`）を使う。学習前に、元のテンプレートと実データ400行で文字単位まで同じ出力になることを確認し、違えば止まる。トークナイザ単体が返す`BatchEncoding`を辞書と見なさず長さを誤る不具合と、context を全部削っても予算を超える行を`None`のまま残す不具合も直した（どちらもQwenの既存runには影響しない）。
-- 未完了: ブラウザ用の変換には、MLCに2026-11-16に入ったLFM2対応（commit `87a90ce`）が必要で、手元のMLC nightly（0.26.dev6）にはまだない。WebLLMへの変換・評価・公開は学習後に行う。
+- ブラウザ用の変換: ownerの了承を得て、MLCのLFM2対応（commit `87a90ce`、2026-11-16）のPython部分を手元の`mlc-venv`に取り込んだ。素のLFM2.5-JPを`q4f16_1`に変換すると633 MBになり、185個のテンソルの名前・形・型がMLC公開の`LFM2.5-1.2B-Instruct-q4f16_1-MLC`と一致した。WebLLMの既製ライブラリをそのまま使える。詳細は`webllm/README.md`。サイト側の対応、ブラウザでの動作確認、学習後の評価・公開はまだ。
 
 2026-11-21 HFのv3を`v3/`に整理した（ownerの依頼）。
 

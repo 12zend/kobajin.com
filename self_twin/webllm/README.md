@@ -49,6 +49,12 @@ self_twin/mlc-venv/bin/python -m mlc_llm gen_config self_twin/webllm/mlc-input/l
   --output self_twin/webllm/hf-upload/luna-v3
 ```
 
+## LFM2.5-1.2B-JP conversion (low-memory version, 2026-11-22)
+
+The low-memory version is trained on `LiquidAI/LFM2.5-1.2B-JP-202606` (see `training/training_report.md`). The MLC nightly installed here (0.26.dev6) predates MLC's LFM2 support, so with the owner's approval (2026-11-22) the Python side of MLC commit [`87a90ce`](https://github.com/mlc-ai/mlc-llm/commit/87a90ce0028901e17ab50ff3ee3caea33c204a5f) was added to `self_twin/mlc-venv/`: `model/lfm2/` (model and loader), `conversation_template/lfm2.py`, the `lfm2` entries in `model/model.py`, `conversation_template/__init__.py` and `interface/gen_config.py`. Two local adjustments make it run on this older TVM: `lfm2_model.py` imports `tirx` from `tvm` instead of `tvm_tirx`, and `lfm2_loader.py` passes dtypes to NumPy as strings (as the Qwen3.5 loader does). The commit's C++ changes are runtime-only; WebLLM's prebuilt LFM2.5 library already has them.
+
+A test conversion of the untrained base (`webllm/mlc-input/lfm25-jp-base`, `--quantization q4f16_1 --conv-template lfm2 --context-window-size 4096 --prefill-chunk-size 1024`) gives a 633 MB bundle (1.17 B parameters, 4.5 bits each). Its 185 tensors match the names, shapes and dtypes of MLC's published `mlc-ai/LFM2.5-1.2B-Instruct-q4f16_1-MLC`, so a fine-tuned JP bundle can reuse WebLLM's prebuilt `LFM2.5-1.2B-Instruct-q4f16_1` library (about 1.0 GB of VRAM by WebLLM's estimate). The remaining config differences are the context window (WebLLM overrides it to 4,096; the site uses 2,048) and `render_empty_system_message`, which does not matter because the site always sends a system prompt. Running it on the site still needs site changes (the site assumes a Qwen3.5-4B library and conversation config) and an in-browser check.
+
 ## wllama (GGUF in the browser) considered, not adopted (2026-11-21)
 
 [wllama](https://github.com/ngxson/wllama) 3.13.0 runs llama.cpp in the browser with WebGPU and loads `qwen35` GGUF, so the v2 `Q4_K_M` file (split into 512 MB parts with `llama-gguf-split`) works. It was compared with the site's WebLLM v2 bundle in the same Chromium browser pane on the same Mac, from a local server: greedy, no repetition penalty, 128 tokens, the 4 parity prompts with the site's system prompt (about 334 prompt tokens).
