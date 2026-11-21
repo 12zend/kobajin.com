@@ -312,7 +312,7 @@ svg.i { width: 1.25em; height: 1.25em; fill: none; stroke: currentColor; stroke-
 .model-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dc-online); }
 body[data-busy="true"] .model-dot { background: #f0b232; animation: pulse 0.9s ease-in-out infinite; }
 body[data-model="online"] .model-dot { background: var(--blue); }
-body[data-model="idle"] .model-dot, body[data-model="unsupported"] .model-dot, body[data-model="error"] .model-dot { background: #80848e; }
+body[data-model="idle"] .model-dot, body[data-model="unsupported"] .model-dot, body[data-model="error"] .model-dot, body[data-model="elsewhere"] .model-dot { background: #80848e; }
 .model-open { margin-left: auto; height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: none; font-weight: 700; font-size: 13px; }
 .model-open:hover { background: var(--hover); }
 .model-chip { flex: none; height: 26px; padding: 0 10px; border: 0; border-radius: 999px; background: #333639; color: #c4c7cd; font-size: 12px; font-weight: 700; }

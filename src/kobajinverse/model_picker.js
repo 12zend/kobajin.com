@@ -1,6 +1,6 @@
 import { DEFAULT_VERSION, MODELS, findModel } from "../models.js";
 import { $, escapeHtml, say, toast } from "./dom.js";
-import { HAS_WEBGPU, isCached, load, unload } from "./engine.js";
+import { EngineBusyError, HAS_WEBGPU, isCached, load, onEvict, unload } from "./engine.js";
 import { createWebLLM, llm } from "./llm.js";
 import { refreshAll } from "./render.js";
 import { posts } from "./state.js";
@@ -12,6 +12,10 @@ import { posts } from "./state.js";
 // browser; only the chosen version is downloaded and loaded (AGENTS.md).
 // A visitor who started the model before, and whose version is saved
 // here, gets it back as soon as they post (wakeModel).
+//
+// Only one tab runs the model (engine.js). Starting it here takes it from
+// another tab, which goes back to the mock ("elsewhere"); posting in a
+// tab never takes it from another one.
 
 const MODEL_KEY = "kobajinverse.model";
 const STARTED_KEY = "kobajinverse.model-started";
@@ -19,7 +23,7 @@ const read = (key) => { try { return localStorage.getItem(key); } catch { return
 const write = (key, value) => { try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch { /* this visit only */ } };
 
 let chosen = findModel(read(MODEL_KEY) || DEFAULT_VERSION).version;
-// idle | loading | online | error | unsupported
+// idle | loading | online | error | elsewhere | unsupported
 let state = HAS_WEBGPU ? "idle" : "unsupported";
 let progress = { ratio: 0, text: "" };
 let errorText = "";
@@ -35,6 +39,7 @@ function stateText() {
   if (state === "online") return `kobajinAI ${chosen} がこの端末で動作中`;
   if (state === "loading") return `${chosen} を読み込み中… ${Math.round(progress.ratio * 100)}%`;
   if (state === "error") return "読み込めませんでした（モック推論で動作中）";
+  if (state === "elsewhere") return "別のタブで動作中（このタブはモック推論）";
   if (state === "unsupported") return "モック推論（WebGPU非対応）";
   return "モック推論で動作中";
 }
@@ -64,11 +69,13 @@ function render() {
     loading: "読み込みを中止",
     error: "もう一度試す",
     unsupported: "このブラウザでは使えません",
+    elsewhere: `${chosen} をこのタブで起動`,
   }[state] || (cached.has(chosen) ? `${chosen} を起動` : `${chosen} をダウンロードして起動`);
   status.textContent = {
     online: `${chosen} がこの端末の中で投稿・返信・リアクションを書いています。`,
     loading: progress.text,
     error: errorText,
+    elsewhere: "kobajinAIは一度に1つのタブでだけ動きます（2つ動かすとメモリとGPUを2倍使うため）。起動すると、もう一方のタブはモックに戻ります。",
     unsupported: "WebGPUに対応したブラウザ（最新のChromeやEdgeなど）で開くと、kobajinAIを動かせます。それまではモック推論（定型文）で動きます。",
   }[state] || (cached.has(chosen)
     ? "このブラウザに保存済みなので、すぐに起動できます。"
@@ -78,8 +85,10 @@ function render() {
 function goOnline(engine, version) {
   llm.use(createWebLLM(engine, version, (error) => {
     // The engine broke (GPU lost, tab out of memory): back to the mock.
-    console.error("kobajinAI generation failed", error);
+    // Not online means it was being unloaded on purpose (stop, switch,
+    // another tab), which cuts a running generation short.
     if (state !== "online") return;
+    console.error("kobajinAI generation failed", error);
     llm.use(null);
     unload();
     state = "error";
@@ -95,7 +104,17 @@ function goOnline(engine, version) {
   toast(`kobajinAI ${version} が起動しました`);
 }
 
-async function start() {
+// Progress reports come many times a second; repaint once per frame.
+let renderQueued = false;
+function renderSoon() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => { renderQueued = false; render(); });
+}
+
+// `steal` takes the model from another tab; without it, a tab that
+// finds the model running elsewhere stays on the mock.
+async function start({ steal = true } = {}) {
   if (!HAS_WEBGPU) return;
   const version = chosen;
   llm.use(null);
@@ -106,11 +125,16 @@ async function start() {
   try {
     const loaded = await load(version, (report) => {
       progress = { ratio: Math.max(progress.ratio, report.progress || 0), text: describe(report.text) };
-      render();
-    });
+      renderSoon();
+    }, { steal });
     if (!loaded) return; // superseded by another start or a stop
     goOnline(loaded.engine, loaded.version);
   } catch (error) {
+    if (error instanceof EngineBusyError) {
+      state = "elsewhere";
+      render();
+      return;
+    }
     console.error("kobajinAI model load failed", error);
     state = "error";
     errorText = `${error?.message || "読み込みに失敗しました"}。通信とブラウザの空き容量を確かめて、もう一度試してください。`;
@@ -140,10 +164,21 @@ function describe(text = "") {
 
 // Called when the visitor posts or replies.
 export function wakeModel() {
-  if (state === "idle" && read(STARTED_KEY) && cached.has(chosen)) start();
+  if (state === "idle" && read(STARTED_KEY) && cached.has(chosen)) start({ steal: false });
+}
+
+// Another tab started the model and took it from this one.
+function evicted() {
+  if (state !== "online" && state !== "loading") return;
+  llm.use(null);
+  state = "elsewhere";
+  render();
+  refreshAll(posts);
+  toast("別のタブでkobajinAIを起動したので、このタブはモックに戻りました");
 }
 
 export function setupModelPicker() {
+  onEvict(evicted);
   const dialog = $("model-dialog");
   document.addEventListener("click", (event) => {
     if (event.target.closest("[data-open-model]")) { render(); dialog.showModal(); }
@@ -167,7 +202,7 @@ export function setupModelPicker() {
   if (HAS_WEBGPU) {
     setTimeout(() => {
       Promise.all(MODELS.map(async (model) => { if (await isCached(model.version)) cached.add(model.version); }))
-        .then(() => { if (state === "idle" || state === "error") render(); })
+        .then(() => { if (state !== "online" && state !== "loading") render(); })
         .catch(() => {});
     }, 1500);
   }

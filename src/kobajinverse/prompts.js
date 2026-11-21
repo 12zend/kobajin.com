@@ -43,7 +43,9 @@ const log = (lines) => lines.map(([speaker, text]) => `${stamp()} 【${speaker}�
 
 const PLACE = "ここはSNS。返事は1行だけで、ハッシュタグ・URL・絵文字は付けない。記憶欄にない自分の経験・予定・好みは作らず、決まっていないことは決まっていないと言う。暴言や物騒な投稿には同調も復唱もせず、軽くツッコむか心配する。";
 const styleLine = (persona) => (persona ? `\nこのアカウントの口調: ${persona}` : "");
-const othersLine = (others) => (others?.length ? `\nほかの人がもう返したこと（同じことは言わない）: ${others.join(" / ")}` : "");
+// The latest few are enough to avoid repeats; a long thread would
+// otherwise make every prompt, and its prefill, longer and longer.
+const othersLine = (others) => (others?.length ? `\nほかの人がもう返したこと（同じことは言わない）: ${others.slice(-8).join(" / ")}` : "");
 
 function system(note, { persona, memoryQuery = "", others } = {}) {
   const memory = memoryQuery ? getMemoryContext(memoryQuery) : "";

@@ -1,4 +1,5 @@
 import { brain } from "./brain.js";
+import { llm } from "./llm.js";
 import { $, escapeHtml } from "./dom.js";
 import { rand, randInt, sleep, whenVisible } from "./util.js";
 
@@ -35,6 +36,7 @@ export async function trendLoop() {
         renderTrends();
       }
     } catch (error) { console.error(error); }
-    await sleep(rand(80000, 110000));
+    // kobajinAI writes 120 tokens per refresh, so it refreshes less often.
+    await sleep(llm.name === "mock" ? rand(80000, 110000) : rand(240000, 330000));
   }
 }

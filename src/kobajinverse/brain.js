@@ -1,17 +1,25 @@
 import { llm } from "./llm.js";
 import { POST_KINDS, REACTION_EMOJI } from "./prompts.js";
 import { HARSH, rejectReason } from "./safety.js";
-import { chars, pick } from "./util.js";
+import { chars, pick, sleep } from "./util.js";
 
 // Brain: one generation at a time, visitor work first.
 // A single WebLLM engine handles one request at a time, so every call
 // goes through this queue. Visitor reactions jump ahead of background
 // posts, kobajin-to-kobajin threads, and trends.
+//
+// So the real model does not keep the GPU busy back to back, background
+// jobs wait BACKGROUND_REST_MS after each kobajinAI generation, and wait
+// while the tab is hidden. Visitor jobs never wait.
 
 export const PRIORITY = { visitor: 2, background: 1 };
+const BACKGROUND_REST_MS = 2500;
 const queue = [];
 let queueRunning = false;
 let queueSeq = 0;
+let restUntil = 0;
+
+const canRun = () => queue[0]?.priority === PRIORITY.visitor || (!document.hidden && Date.now() >= restUntil);
 
 function enqueue(priority, run) {
   return new Promise((resolve, reject) => {
@@ -23,11 +31,17 @@ function enqueue(priority, run) {
 
 async function pumpQueue() {
   if (queueRunning) return;
-  const job = queue.shift();
-  if (!job) { document.body.dataset.busy = "false"; return; }
+  if (!queue.length) { document.body.dataset.busy = "false"; return; }
   queueRunning = true;
+  if (!canRun()) {
+    document.body.dataset.busy = "false";
+    while (!canRun()) await sleep(250);
+  }
+  const job = queue.shift();
   document.body.dataset.busy = "true";
+  const real = llm.name !== "mock";
   try { job.resolve(await job.run()); } catch (error) { job.reject(error); }
+  if (real) restUntil = Date.now() + BACKGROUND_REST_MS;
   queueRunning = false;
   pumpQueue();
 }

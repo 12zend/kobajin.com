@@ -1,6 +1,7 @@
 import { ALTS } from "./accounts.js";
 import { banter, react } from "./actions.js";
 import { brain } from "./brain.js";
+import { llm } from "./llm.js";
 import { applyFilters, arrive, showPost } from "./feed.js";
 import { feedEl } from "./render.js";
 import { newPost, posts } from "./state.js";
@@ -43,7 +44,7 @@ async function autoPost({ createdAt, quiet = false } = {}) {
   shuffle(ALTS.filter((alt) => alt.id !== account.id)).slice(0, randInt(0, 3)).forEach((alt, index) => {
     setTimeout(() => react(post, pick(["🤔", "👍", "🤔", "😂"]), alt.id), rand(2500, 6000) + index * 2000);
   });
-  if (Math.random() < 0.45) banter(post).catch(console.error);
+  if (Math.random() < (llm.name === "mock" ? 0.45 : 0.3)) banter(post).catch(console.error);
   return post;
 }
 
@@ -90,9 +91,11 @@ export async function catchUp(since) {
   return made.length;
 }
 
+// The mock posts every 14–30 s. kobajinAI posts about half as often:
+// each post brings replies and threads, all generated on the GPU.
 export async function postLoop() {
   for (;;) {
-    await sleep(rand(14000, 30000));
+    await sleep(llm.name === "mock" ? rand(14000, 30000) : rand(35000, 65000));
     await whenVisible();
     try { await autoPost(); } catch (error) { console.error(error); }
   }
