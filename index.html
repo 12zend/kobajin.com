@@ -443,7 +443,7 @@
       //
       //     llm.complete(task, input) -> Promise<string>   (raw model text)
       //
-      // task is one of "post" | "reply" | "judge" | "trend". PROMPTS below say
+      // task is one of "post" | "reply" | "elaborate" | "react" | "judge" | "trend". PROMPTS say
       // what each task asks; createMockLLM() ignores them and returns canned
       // text. To switch to WebLLM, write createWebLLM(engine) with the same
       // complete(): send PROMPTS[task].system plus PROMPTS[task].user(input)
@@ -470,6 +470,13 @@
               : `元の発言: ${parent}\nそれへの返信: ${text}\nこの返信に返す。`
             : `投稿: ${text}`}${others.length ? `\nほかの返信（同じことは言わない）: ${others.join(" / ")}` : ""}`,
           decoding: { temperature: 0.8, top_p: 1, repetition_penalty: 1.12, max_tokens: 20 },
+        },
+        // Asked 「具体的に」「詳しく」 about its own line: say what it meant,
+        // longer than a reply, without making up kobajin's life.
+        elaborate: {
+          system: "SNSで自分の発言に「具体的に」「詳しく」と返された。自分の発言を一歩掘り下げて、何のことか・具体例を1つ、25文字以内のくだけた日本語で答える。相槌や聞き返しでごまかさない。記憶欄にない自分の経験・予定・好みは作らず、決まっていないことは決まっていないと言いつつ、言いたかった中身を具体的に言う。",
+          user: ({ text, parent, others }) => `自分の発言: ${parent}\n相手の返信: ${text}${others.length ? `\nほかの返信（同じことは言わない）: ${others.join(" / ")}` : ""}`,
+          decoding: { temperature: 0.8, top_p: 1, repetition_penalty: 1.12, max_tokens: 48 },
         },
         react: {
           system: `次の投稿に絵文字1つだけでリアクションする。候補: ${"🤔 👍 😂 🫠 😭 👀 🔥 💯 😨"}。投稿の内容と温度に合うものを選ぶ。`,
@@ -514,6 +521,62 @@
           "やりたいこと": ["なんか作りたい", "どっか行きたい", "新しいこと始めたい", "全部やりたい", "一回ちゃんとやる"],
           "眠い": ["もう寝たい", "ねむすぎて終わった"],
         };
+        // What each post line meant, for 「具体的に」「詳しく」. They spell out
+        // the thought itself; plans and tastes stay undecided.
+        const ELABORATIONS = {
+          "なんで月曜って存在するん": ["土日のあとに急に平日来るのがおかしい", "休みとの落差がでかすぎるって話"],
+          "結局どっちが正解なん": ["どっちにも言い分あって決め手がない", "両方よさそうに見えて選べんやつ"],
+          "これ誰が決めたん": ["気づいたら当たり前になってるルールのこと", "最初に決めた人の理由が知りたい"],
+          "冷静に考えて謎": ["当たり前のことほど理由聞かれると答えられん", "普通に受け入れてたけど意味わからんくなった"],
+          "なんでこうなった？": ["やったことと結果がつながってない", "途中まで合ってたはずなのにって感じ"],
+          "いやそうはならんやろ": ["前提から結論まで飛びすぎてる", "途中の説明が一個もないって話"],
+          "情報量が多い": ["一画面に言いたいことが詰まりすぎ", "一個ずつならわかるけど同時はむり"],
+          "それはそう": ["反論のしようがない正論って意味", "言われてみれば当たり前すぎるやつ"],
+          "たしかに？": ["納得しかけたけどまだ半信半疑", "一瞬うなずいたけど理由は説明できん"],
+          "急に正論やめて": ["ふざけてたのに真面目に返されたとき", "正しいけど今それ言うんかって感じ"],
+          "天才の発想すぎる": ["思いつきそうで誰も思いつかんやつ", "言われたら簡単なのに自分では出てこない"],
+          "仕組み考えた人えぐい": ["使う側が何も考えんでいいのがすごい", "裏で全部うまく回ってるのがえぐい"],
+          "よくできてるなこれ": ["細かいとこまで迷わんようになってる", "無駄な手順がひとつもない"],
+          "発想が強い": ["普通と逆から考えてるのがいい", "前提から疑ってるのが強い"],
+          "これ考えた人すごい": ["当たり前になってるけど最初はなかった", "みんな使ってるのに考えた人は見えへん"],
+          "今日いける気がする": ["根拠はないけど手が止まらん感じ", "やること全部うまく転がりそうな日"],
+          "これは勝ち": ["思った通りに一発で決まったときのやつ", "迷わず進めた時点で勝ち"],
+          "完全に理解した": ["わかった気がしてるだけの段階", "説明はできんけど感覚はつかんだ"],
+          "優勝": ["今日いちばんうれしいってこと", "全部うまくいったときの一言"],
+          "流れきてる": ["小さいことが続けてうまくいってる", "今なら何やっても進みそう"],
+          "あと一歩が遠い": ["九割できてから最後が終わらん", "残りちょっとが一番時間かかる"],
+          "動いたけど理由不明": ["直したつもりないとこで直ってる", "触ってないのに動くのが一番こわい"],
+          "バグが仕様になった": ["変な動きやけどそれはそれで使える", "直すより残したほうがおもろいやつ"],
+          "一旦保存": ["キリはよくないけど消えるよりまし", "途中でも残しとくのが大事"],
+          "進捗えぐい": ["思ったより一気に進んだ", "手を動かしたぶんだけ形になった"],
+          "言語化むずい": ["頭ではわかってるのに言葉にならん", "感覚はあるのに説明すると別物になる"],
+          "わかるようでわからん": ["説明は追えるのに自分で再現できん", "うなずけるけど人に説明できん"],
+          "考えすぎたかもしれん": ["簡単な話を自分でややこしくしてた", "最初の案で良かったかもしれん"],
+          "シンプルが一番": ["足すより削るほうが大事って話", "説明いらんくらいがちょうどいい", "機能は少ないほうが迷わん"],
+          "結局タイミング": ["同じことでも言う時期で通り方が変わる", "早すぎても遅すぎてもあかん"],
+          "寒すぎてえぐい": ["手が冷えて何もできん", "外出た瞬間に後悔する寒さ"],
+          "急に夏": ["昨日まで上着いったのに今日は暑い", "季節の切り替わりが雑すぎる"],
+          "空が広い": ["雲がなくて遠くまで見える", "見上げたら思ったより空がでかかった"],
+          "季節の変わり目すぎる": ["朝寒くて昼暑い", "何着たらいいかわからん"],
+          "風つよ": ["前に進まれへんくらい吹いてる", "髪がずっと顔にくる"],
+          "なんか作りたい": ["何を作るかはまだ決めてない、気持ちだけある", "作りたい気持ちだけ先にある"],
+          "どっか行きたい": ["行き先はまだ決めてない", "場所より出かけたい気分の話"],
+          "新しいこと始めたい": ["何を始めるかはまだ決めてない", "いつもと違うことをしたい気分"],
+          "全部やりたい": ["やりたいことが多すぎて絞れん", "一個に決められへんって話"],
+          "一回ちゃんとやる": ["中途半端で止めずに最後までやる", "雑に済ませてたのを丁寧にやり直す"],
+          "もう寝たい": ["まぶたが限界", "画面の文字が頭に入ってこん"],
+          "ねむすぎて終わった": ["何してても意識が飛びそう", "考えがまとまらん"],
+        };
+        // A line the mock did not write itself (a reply such as 「ラーメンいいな」)
+        // has no stored meaning, so it says what it picked up on.
+        function elaborations(parent) {
+          const known = ELABORATIONS[parent];
+          if (known) return known;
+          const word = keyword(parent);
+          return word
+            ? [`${word}ってとこに反応しただけ`, `${word}の話が気になったって意味`]
+            : ["そこまで深い意味はない", "ノリで言ったからこれ以上はない"];
+        }
         // Replies follow the post: its own words first, then its tone.
         // "harsh" comes first: insults and threats get pushback, never an
         // echo or agreement. The lookaheads keep 少しねむい and カスタム out.
@@ -672,6 +735,11 @@
               const pool = useEcho ? echo : fresh(TONE_REPLIES[tone]);
               return pick(pool.length ? pool : TONE_REPLIES[tone]);
             }
+            if (task === "elaborate") {
+              const lines = elaborations(input.parent || "");
+              const fresh = lines.filter((line) => !(input.others || []).includes(line));
+              return pick(fresh.length ? fresh : lines);
+            }
             if (task === "react") return pick(TONE_EMOJI[toneOf(input.text || "")]);
             if (task === "judge") {
               const chance = { harsh: 0, funny: 0.9, happy: 0.85, rough: 0.75, question: 0.5, neutral: 0.4 }[toneOf(input.text || "")];
@@ -728,6 +796,8 @@
         return list.length > maxChars ? list.slice(0, maxChars).join("") : unquoted;
       }
 
+      const DETAIL = /具体|詳し|くわし|kwsk|詳細|例えば|たとえば|例は|例を|どういう(こと|意味)|どゆこと|どういうことや|つまり|説明して|掘り下げ|もっと(教えて|聞かせて|言って)|もう(少し|ちょい|ちょっと)(詳|くわ|教|説明)/i;
+
       const recentKinds = [];
 
       const brain = {
@@ -740,9 +810,14 @@
         },
         // `others` is read when the job runs, so replies queued together still
         // see the ones that finished before them.
+        // A request to say more (具体的に, 詳しく, たとえば？, どういうこと) about
+        // the account's own line gets a longer, concrete answer instead of a
+        // 10-character reaction.
         async reply({ text, parent = null, addressed = false }, others) {
-          const raw = await enqueue(PRIORITY.visitor, () => llm.complete("reply", { text, parent, addressed, others: others() }));
-          return clean(raw, 10);
+          const detail = Boolean(addressed && parent && DETAIL.test(text));
+          const task = detail ? "elaborate" : "reply";
+          const raw = await enqueue(PRIORITY.visitor, () => llm.complete(task, { text, parent, addressed, others: others() }));
+          return clean(raw, detail ? 25 : 10);
         },
         // One emoji for the post; anything off the list falls back to 🤔.
         async react(text) {
