@@ -2,6 +2,12 @@
 
 ## 状態
 
+2026-11-21 HFのv3を`v3/`に整理した（ownerの依頼）。
+
+- v3のWebLLMバンドル80ファイルはリポジトリ直下にあったため、`v3/`へサーバー側でコピーし、直下の分を削除した（commit [`0bc0bea`](https://huggingface.co/kobajin/kobajinAI/commit/0bc0bea14368ef51162f68ed5c545633ee567f15)）。`v3/`の80ファイルは`a2534a2`直下とサイズ・hashが一致。直下には`README.md`と`.gitattributes`だけが残る。model cardも更新した（commit [`a14137a`](https://huggingface.co/kobajin/kobajinAI/commit/a14137a19c83b0c1f0df4657556b776ecc0ad992)）。
+- サイト（`src/models.js`）はv3を`a2534a2`直下から読み続ける。revisionは不変なので取得でき（確認済み）、URLを変えないのでキャッシュ済みの訪問者が再ダウンロードしない。
+- ownerの指示で、AGENTS.mdの「公開済みバージョンのファイルを上書き・削除しない／v3は`a2534a2`直下に置く」というルールを削除した。
+
 2026-11-21 v1〜v3のGGUF Q4_K_Mと、HFのmodel cardを公開した（ownerの依頼）。
 
 - 各バージョンのマージ済みBF16 checkpointをllama.cpp `d81235049`でGGUFに変換し、`Q4_K_M`（imatrixなし、5.13 BPW、各2.71 GB）に量子化した。`kobajin/kobajinAI`の`gguf/`に追加（commit [`a64b0e7`](https://huggingface.co/kobajin/kobajinAI/commit/a64b0e78e9a80d5ae17677b49ac4677ab4d0d82b)）。サイトはWebLLMの`q4f16_1`バンドルを使い続け、固定revisionのバンドルは変わっていないことをファイル単位で確認した。手順とsha256は`gguf/README.md`。

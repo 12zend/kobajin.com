@@ -31,13 +31,13 @@ kobajinAIは、kobajinの話し方をまねて返事をするチャットモデ�
 
 ## Versions
 
-Every trained version stays published. A version's files are never replaced; each one is pinned to the revision it was uploaded in.
+Every trained version stays published, each in its own folder. The site loads each version from an immutable revision, so its downloads keep working when the repository is reorganized.
 
 | Version | WebLLM bundle | `model_id` | Training data | Character |
 |---|---|---|---|---|
 | **v2** (site default) | [`v2/` at `1f9287d`](https://huggingface.co/kobajin/kobajinAI/tree/1f9287d837eb311f5d0ab9262240ab2ed362d87c/v2) | `kobajinAI-qwen35-4b-kobajin-clean-v2-1f9287d-q4f16_1-MLC` | Real chats, plus rows that practice using retrieved memories | Casual short replies. Uses memories, but sometimes brings in unrelated ones. |
 | v1 | [`v1/` at `8d6dab1`](https://huggingface.co/kobajin/kobajinAI/tree/8d6dab15195505c8c92c2d9ceb99f2551239f2d4/v1) | `kobajinAI-qwen35-4b-kobajin-clean-v1-8d6dab1-q4f16_1-MLC` | Real chats only | Casual short replies. Mostly ignores memories. |
-| v3 | [repository root at `a2534a2`](https://huggingface.co/kobajin/kobajinAI/tree/a2534a20253d54cce925307fbd76086498b09a11) | `kobajinAI-qwen35-4b-luna-v3-a2534a2-q4f16_1-MLC` | Mostly synthetic examples written by Luna | Longer, advice-like replies; less like kobajin's real chats. |
+| v3 | [`v3/` at `0bc0bea`](https://huggingface.co/kobajin/kobajinAI/tree/0bc0bea14368ef51162f68ed5c545633ee567f15/v3) | `kobajinAI-qwen35-4b-luna-v3-a2534a2-q4f16_1-MLC` | Mostly synthetic examples written by Luna | Longer, advice-like replies; less like kobajin's real chats. |
 
 The site's default is the version currently judged closest to kobajin (v2 since 2026-11-21). Visitors can pick another version on the site.
 
@@ -45,10 +45,12 @@ The site's default is the version currently judged closest to kobajin (v2 since 
 
 | Path | Format | Used by |
 |---|---|---|
-| `v1/`, `v2/`, repository root (v3) | MLC `q4f16_1` WebLLM bundle: `params_shard_*.bin`, `tensor-cache.json`, `mlc-chat-config.json`, tokenizer files | kobajin.com (WebLLM) |
+| `v1/`, `v2/`, `v3/` | MLC `q4f16_1` WebLLM bundle: `params_shard_*.bin`, `tensor-cache.json`, `mlc-chat-config.json`, tokenizer files | kobajin.com (WebLLM) |
 | `gguf/kobajinAI-v1-Q4_K_M.gguf`, `gguf/kobajinAI-v2-Q4_K_M.gguf`, `gguf/kobajinAI-v3-Q4_K_M.gguf` | GGUF `Q4_K_M` | llama.cpp and other GGUF runtimes, for local use. The site does not use them. |
 
 `q4f16_1` stores weights as 4-bit integers with float16 group scales. All three WebLLM bundles reuse WebLLM's prebuilt Qwen3.5-4B library.
+
+v3 was first uploaded to the repository root (revision [`a2534a2`](https://huggingface.co/kobajin/kobajinAI/tree/a2534a20253d54cce925307fbd76086498b09a11)) and moved to `v3/` in [`0bc0bea`](https://huggingface.co/kobajin/kobajinAI/commit/0bc0bea14368ef51162f68ed5c545633ee567f15) without changing any file. kobajin.com still loads v3 from the root of `a2534a2`, so visitors who already downloaded it do not download it again.
 
 The GGUF files were converted from the same merged BF16 checkpoints as the WebLLM bundles (llama.cpp `d81235049`, `convert_hf_to_gguf.py` to BF16, then `llama-quantize Q4_K_M` without an importance matrix). They contain the text model only: Qwen3.5's vision encoder and its multi-token-prediction (MTP) head are not included, so they cannot be used for MTP speculative decoding.
 

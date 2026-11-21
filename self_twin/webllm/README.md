@@ -10,7 +10,7 @@ The owner decided on 2026-11-21 to publish every trained version (see `AGENTS.md
 |---|---|---|---|
 | v1 | `v1/` at [`8d6dab1`](https://huggingface.co/kobajin/kobajinAI/commit/8d6dab15195505c8c92c2d9ceb99f2551239f2d4) | `self_twin/adapter/experiment-r8-kobajin-clean-v1-lr5e5/adapter` | Real chats only. Natural voice; ignored retrieved memories (0/3) and overused 「うんこ」. |
 | v2 | `v2/` at [`1f9287d`](https://huggingface.co/kobajin/kobajinAI/commit/1f9287d837eb311f5d0ab9262240ab2ed362d87c) | `self_twin/adapter/experiment-r8-kobajin-clean-v2-memory/adapter` | Real chats plus memory-grounded rows; 2/3 fixed memory questions answered with the memory. The site's default since 2026-11-21. |
-| v3 | repository root at `a2534a20253d54cce925307fbd76086498b09a11` | `self_twin/adapter/experiment-r8-luna-synthetic-1000-v3/adapter` | Mostly Luna-written synthetic examples. |
+| v3 | `v3/` at [`0bc0bea`](https://huggingface.co/kobajin/kobajinAI/commit/0bc0bea14368ef51162f68ed5c545633ee567f15); the site loads the same files from the repository root at `a2534a20253d54cce925307fbd76086498b09a11` | `self_twin/adapter/experiment-r8-luna-synthetic-1000-v3/adapter` | Mostly Luna-written synthetic examples. |
 
 The same repository also has GGUF `Q4_K_M` files of every version in `gguf/` for llama.cpp; the site does not use them (see `self_twin/gguf/README.md`). The repository's `README.md` is the model card in `hf_model_card.md`; upload it again when a version is added.
 
@@ -51,7 +51,7 @@ self_twin/mlc-venv/bin/python -m mlc_llm gen_config self_twin/webllm/mlc-input/l
 
 ## Upload to Hugging Face
 
-Upload each version's **contents** to its own folder of `kobajin/kobajinAI` (`v1/`, `v2/`, later `v4/`, …). Include `mlc-chat-config.json`, `tensor-cache.json`, every `params_shard_*.bin`, and both tokenizer files. Exclude the optional `tensor-cache-b16.json`. Keep all shards together; do not substitute raw merged `.safetensors` files. The WebLLM model record fetches its prebuilt WebGPU library separately from MLC; `.wasm` is not part of this upload. v3 is at the repository root of revision `a2534a2` and stays there.
+Upload each version's **contents** to its own folder of `kobajin/kobajinAI` (`v1/`, `v2/`, later `v4/`, …). Include `mlc-chat-config.json`, `tensor-cache.json`, every `params_shard_*.bin`, and both tokenizer files. Exclude the optional `tensor-cache-b16.json`. Keep all shards together; do not substitute raw merged `.safetensors` files. The WebLLM model record fetches its prebuilt WebGPU library separately from MLC; `.wasm` is not part of this upload. v3 was uploaded to the repository root (`a2534a2`) and moved to `v3/` in `0bc0bea` on 2026-11-21; all 80 files are byte-identical (checked by size and hash). `src/models.js` still points v3 at the root of `a2534a2`, which stays downloadable because Hugging Face revisions are immutable; changing the URL would make browsers that cached v3 download it again.
 
 ```sh
 self_twin/mlc-venv/bin/hf upload kobajin/kobajinAI self_twin/webllm/hf-upload/kobajin-clean-v2 v2 \
