@@ -49,6 +49,21 @@ self_twin/mlc-venv/bin/python -m mlc_llm gen_config self_twin/webllm/mlc-input/l
   --output self_twin/webllm/hf-upload/luna-v3
 ```
 
+## wllama (GGUF in the browser) considered, not adopted (2026-11-21)
+
+[wllama](https://github.com/ngxson/wllama) 3.13.0 runs llama.cpp in the browser with WebGPU and loads `qwen35` GGUF, so the v2 `Q4_K_M` file (split into 512 MB parts with `llama-gguf-split`) works. It was compared with the site's WebLLM v2 bundle in the same Chromium browser pane on the same Mac, from a local server: greedy, no repetition penalty, 128 tokens, the 4 parity prompts with the site's system prompt (about 334 prompt tokens).
+
+| | WebLLM `q4f16_1` (site) | wllama GGUF `Q4_K_M` |
+|---|---|---|
+| Download | 2.39 GB | 2.71 GB (+13 %) |
+| Prompt processing | about 358 tokens/s | about 130 tokens/s |
+| Time to first token | 0.93 s | 2.5 s |
+| Generation | 30.9–32.5 tokens/s | 38.3–39.9 tokens/s |
+
+The first WebLLM prompt (108 tokens/s, 3.1 s) is left out of the WebLLM column: it includes one-time GPU shader setup. wllama gave the same speeds without COOP/COEP headers (kobajin.com, served by Cloudflare, sends none), because all layers run on WebGPU. Its log showed flash attention disabled for lack of WebGPU support.
+
+wllama generates faster but reads the prompt about 2.7 times slower. Site replies are short (kobajin's real replies have a median of 9.5 characters) and the site's prompts are longer than these (memories, conversation log), so a typical reply takes longer in wllama (about 2.8 s against 1.2 s for 10 tokens here), and the download is larger. The owner asked not to adopt it if it is heavier, so the site stays on WebLLM. This was one machine and one browser.
+
 ## Upload to Hugging Face
 
 Upload each version's **contents** to its own folder of `kobajin/kobajinAI` (`v1/`, `v2/`, later `v4/`, …). Include `mlc-chat-config.json`, `tensor-cache.json`, every `params_shard_*.bin`, and both tokenizer files. Exclude the optional `tensor-cache-b16.json`. Keep all shards together; do not substitute raw merged `.safetensors` files. The WebLLM model record fetches its prebuilt WebGPU library separately from MLC; `.wasm` is not part of this upload. v3 was uploaded to the repository root (`a2534a2`) and moved to `v3/` in `0bc0bea` on 2026-11-21; all 80 files are byte-identical (checked by size and hash). `src/models.js` still points v3 at the root of `a2534a2`, which stays downloadable because Hugging Face revisions are immutable; changing the URL would make browsers that cached v3 download it again.
