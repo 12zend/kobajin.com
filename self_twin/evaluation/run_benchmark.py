@@ -21,6 +21,8 @@ from retrieve_memory import retrieve, should_retrieve  # noqa: E402
 sys.path.insert(0, str(PROJECT / "inference"))
 from generation import generate_assistant_response  # noqa: E402
 from role_prompts import compose_system_prompt, role_names, role_prompt_sha256, role_settings  # noqa: E402
+sys.path.insert(0, str(PROJECT / "training"))
+from base_models import load_base, pinned_revision, text_tokenizer  # noqa: E402
 
 MODEL_ID = "Qwen/Qwen3.5-4B"
 DEFAULT_REVISION = "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a"
@@ -108,7 +110,8 @@ def main() -> None:
         help="Reuse base responses from an earlier run with the exact same prompts and decoding settings.",
     )
     parser.add_argument("--output", type=Path, default=HERE / "generations.jsonl")
-    parser.add_argument("--revision", default=DEFAULT_REVISION)
+    parser.add_argument("--model-id", default=MODEL_ID, help="base model the adapter was trained on (training/base_models.py)")
+    parser.add_argument("--revision", default=None, help="default: the model's pinned revision")
     parser.add_argument(
         "--role",
         choices=role_names(),
@@ -132,6 +135,8 @@ def main() -> None:
         "top_p": role.get("top_p", 1.0),
         "repetition_penalty": role.get("repetition_penalty", 1.12),
     }
+    if args.revision is None:
+        args.revision = DEFAULT_REVISION if args.model_id == MODEL_ID else pinned_revision(args.model_id)
     for name, value in defaults.items():
         if getattr(args, name) is None:
             setattr(args, name, value)
@@ -154,13 +159,24 @@ def main() -> None:
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     if device == "cpu":
         raise SystemExit("No CUDA or MPS device is available; refusing 4B evaluation on CPU")
-    processor = AutoProcessor.from_pretrained(
-        MODEL_ID,
-        revision=args.revision,
-        cache_dir=DEFAULT_CACHE,
-        local_files_only=True,
-    )
-    if processor.tokenizer.eos_token_id is None:
+    if args.model_id == MODEL_ID:
+        processor = AutoProcessor.from_pretrained(
+            MODEL_ID,
+            revision=args.revision,
+            cache_dir=DEFAULT_CACHE,
+            local_files_only=True,
+        )
+        model = AutoModelForMultimodalLM.from_pretrained(
+            MODEL_ID,
+            revision=args.revision,
+            cache_dir=DEFAULT_CACHE,
+            dtype=torch.bfloat16,
+            low_cpu_mem_usage=True,
+            local_files_only=True,
+        )
+    else:
+        model, processor = load_base(args.model_id, args.revision, DEFAULT_CACHE, torch.bfloat16)
+    if text_tokenizer(processor).eos_token_id is None:
         raise SystemExit("Tokenizer has no EOS token; refusing to generate unbounded chat turns")
     generation_options = {
         "do_sample": args.do_sample,
@@ -169,27 +185,20 @@ def main() -> None:
         "repetition_penalty": args.repetition_penalty if args.do_sample else 1.0,
     }
     generation_settings = {
-        "model_id": MODEL_ID,
+        "model_id": args.model_id,
         "revision": args.revision,
         "max_new_tokens": args.max_new_tokens,
         **generation_options,
         "seed": args.seed,
         "system_prompt_sha256": system_prompt_sha256,
         "enable_thinking": False,
-        "eos_token_id": processor.tokenizer.eos_token_id,
+        "eos_token_id": text_tokenizer(processor).eos_token_id,
         "stop_before_next_chat_turn": True,
     }
     if args.role:
         generation_settings["role"] = args.role
         generation_settings["role_prompt_sha256"] = role_prompt_sha256(args.role)
-    model = AutoModelForMultimodalLM.from_pretrained(
-        MODEL_ID,
-        revision=args.revision,
-        cache_dir=DEFAULT_CACHE,
-        dtype=torch.bfloat16,
-        low_cpu_mem_usage=True,
-        local_files_only=True,
-    ).to(device)
+    model = model.to(device)
     model.eval()
 
     reused_base = None

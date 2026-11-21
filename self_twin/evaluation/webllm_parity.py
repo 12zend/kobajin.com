@@ -30,7 +30,7 @@ from pathlib import Path
 import sys
 
 import torch
-from transformers import AutoModelForMultimodalLM, AutoProcessor
+from transformers import AutoConfig, AutoModelForCausalLM, AutoModelForMultimodalLM, AutoProcessor, AutoTokenizer
 
 HERE = Path(__file__).resolve().parent
 PROJECT = HERE.parent
@@ -41,6 +41,7 @@ MERGED = {
     "v1": PROJECT / "merged" / "qwen35_4b_self_twin_kobajin_clean_v1_20261121",
     "v2": PROJECT / "merged" / "qwen35_4b_self_twin_kobajin_clean_v2_20261121",
     "v3": PROJECT / "merged" / "qwen35_4b_self_twin_experimental_luna_synthetic_v3_20261119",
+    "v4": PROJECT / "merged" / "lfm25_1_2b_jp_self_twin_kobajin_clean_v2_20261122",
 }
 # Words that show a reply used the memory candidate the site offered.
 MEMORY_KEYWORDS = {"好きな食べ物は何？": "ナナチキ", "民謡習ってたってほんと？": "民謡", "TextBlurって何作ったの？": "TextBlur"}
@@ -65,8 +66,19 @@ def first_difference(left: list[int], right: list[int]) -> int | None:
     return None if len(left) == len(right) else min(len(left), len(right))
 
 
+def load(model_dir: Path, device: str):
+    """Qwen3.5 checkpoints load as multimodal with a processor; LFM2.5 as a causal LM with its tokenizer."""
+    if AutoConfig.from_pretrained(model_dir, local_files_only=True).model_type == "lfm2":
+        processor = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
+        model = AutoModelForCausalLM.from_pretrained(model_dir, dtype=torch.bfloat16, low_cpu_mem_usage=True, local_files_only=True)
+    else:
+        processor = AutoProcessor.from_pretrained(model_dir, local_files_only=True)
+        model = AutoModelForMultimodalLM.from_pretrained(model_dir, dtype=torch.bfloat16, low_cpu_mem_usage=True, local_files_only=True)
+    return model.to(device).eval(), processor
+
+
 def compare_greedy(model, processor, device, item: dict) -> dict:
-    tokenizer = processor.tokenizer
+    tokenizer = getattr(processor, "tokenizer", processor)
     reply = item["replies"][0]
     prompt = hf_prompt(processor, item["messages"])
     prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
@@ -78,10 +90,15 @@ def compare_greedy(model, processor, device, item: dict) -> dict:
     cut = joined.rfind(text)
     webllm_prompt = joined[:cut] + (EMPTY_THINK if text.startswith(EMPTY_THINK) else "")
     header = webllm_prompt[webllm_prompt.rfind("<|im_start|>assistant"):]
+    # WebLLM adds LFM2.5's BOS <|startoftext|> as an id (system_prefix_token_ids),
+    # not as text in the prompt array; the chat template writes it as text.
+    bos = tokenizer.bos_token
+    if bos and prompt.startswith(bos) and not webllm_prompt.startswith(bos):
+        webllm_prompt = bos + webllm_prompt
 
-    prefix_len = len(tokenizer.encode(EMPTY_THINK, add_special_tokens=False))
+    prefix_len = len(tokenizer.encode(EMPTY_THINK, add_special_tokens=False)) if text.startswith(EMPTY_THINK) else 0
     webllm_ids = reply.get("output_ids", [])[prefix_len:]
-    stop_ids = {tokenizer.convert_tokens_to_ids("<|im_end|>"), tokenizer.convert_tokens_to_ids("<|endoftext|>")}
+    stop_ids = {tokenizer.convert_tokens_to_ids(name) for name in ("<|im_end|>", "<|endoftext|>") if name in tokenizer.get_vocab()}
     webllm_ids = [token for token in webllm_ids if token not in stop_ids]
 
     max_new = max(len(reply.get("logprobs", [])), 1)
@@ -153,9 +170,7 @@ def main() -> None:
     run = json.loads(args.run.read_text(encoding="utf-8"))
     model_dir = args.model or MERGED[run["version"]]
     device = "mps" if torch.backends.mps.is_available() else "cpu"
-    processor = AutoProcessor.from_pretrained(model_dir, local_files_only=True)
-    model = AutoModelForMultimodalLM.from_pretrained(model_dir, dtype=torch.bfloat16, low_cpu_mem_usage=True, local_files_only=True).to(device)
-    model.eval()
+    model, processor = load(model_dir, device)
 
     if run["mode"] == "greedy":
         rows = [compare_greedy(model, processor, device, item) for item in run["results"]]

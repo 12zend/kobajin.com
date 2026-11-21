@@ -101,6 +101,32 @@
       "reply_tokens_per_char": 0.6723,
       "prompt_tokens_mean": 596.4,
       "prompt_tokens_per_char": 0.6844
+    },
+    "v2recipe-lfm25-1.2b-jp": {
+      "repo": "LiquidAI/LFM2.5-1.2B-JP-202606",
+      "revision": "52b8b4475311a63bf839c6494f78f8ad59d13515",
+      "adapter": "adapter/experiment-r8-kobajin-clean-v2-memory-lfm25-1.2b-jp/adapter",
+      "parameters": 1175894784,
+      "nll_per_char": 2.4139,
+      "bits_per_char": 3.4825,
+      "median_row_nll_per_char": 2.68,
+      "nll_per_token": 3.5902,
+      "reply_tokens_per_char": 0.6723,
+      "prompt_tokens_mean": 596.4,
+      "prompt_tokens_per_char": 0.6844
+    },
+    "v2": {
+      "repo": "Qwen/Qwen3.5-4B",
+      "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+      "adapter": "adapter/experiment-r8-kobajin-clean-v2-memory/adapter",
+      "parameters": 4555497984,
+      "nll_per_char": 2.2866,
+      "bits_per_char": 3.2989,
+      "median_row_nll_per_char": 2.5785,
+      "nll_per_token": 3.7944,
+      "reply_tokens_per_char": 0.6026,
+      "prompt_tokens_mean": 567.8,
+      "prompt_tokens_per_char": 0.6514
     }
   }
 }

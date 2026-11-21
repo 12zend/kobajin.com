@@ -1,0 +1,120 @@
+{
+ "run": "evaluation/webllm_parity/v4-local-greedy.json",
+ "version": "local",
+ "template": "site",
+ "mode": "greedy",
+ "model": "merged/lfm25_1_2b_jp_self_twin_kobajin_clean_v2_20261122",
+ "summary": {
+  "prompts": 8,
+  "prompt_matches_transformers": 8,
+  "greedy_identical": 4,
+  "transformers_top1_agreement": 0.945054945054945,
+  "mean_abs_logprob_diff": 0.20168597821057133
+ },
+ "rows": [
+  {
+   "prompt": "好きな食べ物は何？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n",
+   "webllm": "僕はナナチキ大好き",
+   "transformers": "僕はナナチキ大好き",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 8,
+   "transformers_top1_agrees": 8,
+   "mean_abs_logprob_diff": 0.10077858551837035,
+   "max_abs_logprob_diff": 0.7852107194804818
+  },
+  {
+   "prompt": "民謡習ってたってほんと？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n",
+   "webllm": "え？",
+   "transformers": "えぐ",
+   "greedy_identical": false,
+   "first_different_token": 1,
+   "tokens_compared": 2,
+   "transformers_top1_agrees": 1,
+   "mean_abs_logprob_diff": 0.44674933807699413,
+   "max_abs_logprob_diff": 0.4727472975007523
+  },
+  {
+   "prompt": "TextBlurって何作ったの？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n",
+   "webllm": "あー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあ",
+   "transformers": "あーね",
+   "greedy_identical": false,
+   "first_different_token": 2,
+   "tokens_compared": 64,
+   "transformers_top1_agrees": 63,
+   "mean_abs_logprob_diff": 0.049026953904998505,
+   "max_abs_logprob_diff": 0.5004018436528217
+  },
+  {
+   "prompt": "好きなスポーツは？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n",
+   "webllm": "僕はサッカー",
+   "transformers": "サッカー",
+   "greedy_identical": false,
+   "first_different_token": 0,
+   "tokens_compared": 4,
+   "transformers_top1_agrees": 3,
+   "mean_abs_logprob_diff": 0.20607164725111682,
+   "max_abs_logprob_diff": 0.569763018341068
+  },
+  {
+   "prompt": "名前なんていうの？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n",
+   "webllm": "名前はあるけど",
+   "transformers": "名前はあるけど",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 4,
+   "transformers_top1_agrees": 4,
+   "mean_abs_logprob_diff": 0.21999102044598617,
+   "max_abs_logprob_diff": 0.32445921759226204
+  },
+  {
+   "prompt": "おはよう",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n",
+   "webllm": "おはよう",
+   "transformers": "おはよう",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 3,
+   "transformers_top1_agrees": 3,
+   "mean_abs_logprob_diff": 0.054588676717048396,
+   "max_abs_logprob_diff": 0.12060025474559613
+  },
+  {
+   "prompt": "明日テストなんだけど何から勉強すればいい？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n",
+   "webllm": "今から勉強する",
+   "transformers": "テストの準備は",
+   "greedy_identical": false,
+   "first_different_token": 0,
+   "tokens_compared": 4,
+   "transformers_top1_agrees": 2,
+   "mean_abs_logprob_diff": 0.2859550100031843,
+   "max_abs_logprob_diff": 0.6772244810953678
+  },
+  {
+   "prompt": "最近寒すぎない？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n",
+   "webllm": "えぐ",
+   "transformers": "えぐ",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 2,
+   "transformers_top1_agrees": 2,
+   "mean_abs_logprob_diff": 0.25032659376687183,
+   "max_abs_logprob_diff": 0.40667713950171924
+  }
+ ]
+}

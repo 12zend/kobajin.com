@@ -1,0 +1,147 @@
+{
+  "status": "results_ready_for_subjective_review",
+  "adapter_path": "/Users/kobajin/repo/kobajin.com/self_twin/adapter/experiment-r8-kobajin-clean-v2-memory-lfm25-1.2b-jp/adapter",
+  "generation_file": "/Users/kobajin/repo/kobajin.com/self_twin/evaluation/generations-r8-kobajin-clean-v2-lfm25-1.2b-jp-final-sampled.jsonl",
+  "prompt_count": 35,
+  "generation_settings": {
+    "model_id": "LiquidAI/LFM2.5-1.2B-JP-202606",
+    "revision": "52b8b4475311a63bf839c6494f78f8ad59d13515",
+    "max_new_tokens": 160,
+    "do_sample": true,
+    "temperature": 0.72,
+    "top_p": 1.0,
+    "repetition_penalty": 1.12,
+    "seed": 42,
+    "system_prompt_sha256": "4bc750d82c80686b92d1f7887d1d998e07b37829b2d9005bd784c9046c0bf4dd",
+    "enable_thinking": false,
+    "eos_token_id": 7,
+    "stop_before_next_chat_turn": true
+  },
+  "auxiliary_character_rouge_l_f1": {
+    "base": 0.1125363951478327,
+    "lora": 0.08565084544152028,
+    "lora_rag": 0.08624896704310209
+  },
+  "reference_counts_by_scope": {
+    "all_reference_responses": 34,
+    "conversation_replies": 31,
+    "known_memory_facts": 3
+  },
+  "auxiliary_character_rouge_l_f1_by_scope": {
+    "all_reference_responses": {
+      "base": 0.1125363951478327,
+      "lora": 0.08565084544152028,
+      "lora_rag": 0.08624896704310209
+    },
+    "conversation_replies": {
+      "base": 0.10528089025185193,
+      "lora": 0.08131290882526188,
+      "lora_rag": 0.08131290882526188
+    },
+    "known_memory_facts": {
+      "base": 0.187509945739634,
+      "lora": 0.1304761904761905,
+      "lora_rag": 0.1372549019607843
+    }
+  },
+  "character_rouge_l_f1_by_category": {
+    "conversation": {
+      "base": 0.11500796430323879,
+      "lora": 0.152710883237199,
+      "lora_rag": 0.152710883237199
+    },
+    "long_explanation_or_story": {
+      "base": 0.1289881998212125,
+      "lora": 0.015642366786531546,
+      "lora_rag": 0.015642366786531546
+    },
+    "question_or_prompt": {
+      "base": 0.08140116674859346,
+      "lora": 0.034265378749364514,
+      "lora_rag": 0.034265378749364514
+    },
+    "reaction_or_joke": {
+      "base": 0.12156300863380376,
+      "lora": 0.07551029184245947,
+      "lora_rag": 0.07551029184245947
+    },
+    "short_reaction": {
+      "base": 0.04170471647215833,
+      "lora": 0.13561253561253558,
+      "lora_rag": 0.13561253561253558
+    },
+    "technical_or_project": {
+      "base": 0.1492616487676603,
+      "lora": 0.09039857848853351,
+      "lora_rag": 0.09039857848853351
+    },
+    "disagreement_or_correction": {
+      "base": 0.07407407407407407,
+      "lora": 0.0,
+      "lora_rag": 0.0
+    },
+    "memory_recall": {
+      "base": 0.187509945739634,
+      "lora": 0.1304761904761905,
+      "lora_rag": 0.1372549019607843
+    }
+  },
+  "response_shape": {
+    "base": {
+      "median_characters": 119,
+      "at_most_5_characters": 0,
+      "over_100_characters": 25,
+      "long_low_diversity": 0
+    },
+    "lora": {
+      "median_characters": 6,
+      "at_most_5_characters": 16,
+      "over_100_characters": 0,
+      "long_low_diversity": 0
+    },
+    "lora_rag": {
+      "median_characters": 7,
+      "at_most_5_characters": 15,
+      "over_100_characters": 0,
+      "long_low_diversity": 0
+    }
+  },
+  "repetition_check": {
+    "method": "contiguous repeated spans after whitespace removal; minimum 12 characters across at least two repeats; diagnostic, not a style score",
+    "cases_by_variant": {}
+  },
+  "memory_checks": {
+    "base": {
+      "correct_fact": 2,
+      "fact_total": 3,
+      "fact_source_retrievals": 0,
+      "fact_source_retrievals_missing": 0,
+      "unexpected_retrievals": 0,
+      "unknown_total": 0
+    },
+    "lora": {
+      "correct_fact": 0,
+      "fact_total": 3,
+      "fact_source_retrievals": 0,
+      "fact_source_retrievals_missing": 0,
+      "unexpected_retrievals": 0,
+      "unknown_total": 0
+    },
+    "lora_rag": {
+      "correct_fact": 1,
+      "fact_total": 3,
+      "fact_source_retrievals": 3,
+      "fact_source_retrievals_missing": 0,
+      "unexpected_retrievals": 0,
+      "unknown_total": 1
+    }
+  },
+  "metrics_are_not_the_merge_gate": true,
+  "subjective_scores": {
+    "voice": null,
+    "reaction_fit": null,
+    "naturalness": null,
+    "consistency": null
+  },
+  "merge_decision": "pending qualitative review of saved outputs"
+}

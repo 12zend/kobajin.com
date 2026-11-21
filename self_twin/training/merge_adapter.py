@@ -10,9 +10,8 @@ from pathlib import Path
 
 import torch
 from peft import PeftModel
-from transformers import AutoModelForMultimodalLM, AutoProcessor
 
-from base_models import DEFAULT_MODEL_ID, RECEIPT_NAMES, receipt_path
+from base_models import DEFAULT_MODEL_ID, RECEIPT_NAMES, load_base, receipt_path
 
 PROJECT = Path(__file__).resolve().parents[1]
 CACHE_DIR = PROJECT / "hf_home" / "hub"
@@ -116,24 +115,13 @@ def main() -> None:
             raise SystemExit(f"Refusing to overwrite an existing model directory: {args.output}")
     args.output.mkdir(parents=True, exist_ok=True)
 
-    base = AutoModelForMultimodalLM.from_pretrained(
-        MODEL_ID,
-        revision=revision,
-        cache_dir=CACHE_DIR,
-        dtype=torch.bfloat16,
-        low_cpu_mem_usage=True,
-        local_files_only=True,
-    )
+    # The processor (or, for causal models, the tokenizer) keeps the model's own
+    # chat template, not the marked copy used for training.
+    base, processor = load_base(MODEL_ID, revision, CACHE_DIR, torch.bfloat16)
     adapted = PeftModel.from_pretrained(base, args.adapter, is_trainable=False)
     merged = adapted.merge_and_unload()
     merged.config.use_cache = True
     merged.save_pretrained(args.output, safe_serialization=True, max_shard_size="5GB")
-    processor = AutoProcessor.from_pretrained(
-        MODEL_ID,
-        revision=revision,
-        cache_dir=CACHE_DIR,
-        local_files_only=True,
-    )
     processor.save_pretrained(args.output)
 
     merge_receipt = {

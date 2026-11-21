@@ -1,4 +1,8 @@
-"""Qwen chat generation helpers with explicit turn-boundary stopping."""
+"""Chat generation helpers with explicit turn-boundary stopping.
+
+Work with a multimodal processor (Qwen3.5) or a plain tokenizer (LFM2.5); both
+use <|im_start|>/<|im_end|> turns.
+"""
 
 from __future__ import annotations
 
@@ -49,7 +53,7 @@ def generate_assistant_response(
     top_p: float = 1.0,
     repetition_penalty: float = 1.0,
 ) -> str:
-    tokenizer = processor.tokenizer
+    tokenizer = getattr(processor, "tokenizer", processor)
     eos_token_id = tokenizer.eos_token_id
     im_start_token_id = tokenizer.convert_tokens_to_ids("<|im_start|>")
     if eos_token_id is None or im_start_token_id is None:
@@ -85,4 +89,4 @@ def generate_assistant_response(
     ]
     if boundary_positions:
         generated = generated[: boundary_positions[0]]
-    return processor.batch_decode(generated.unsqueeze(0), skip_special_tokens=True)[0].strip()
+    return tokenizer.batch_decode(generated.unsqueeze(0), skip_special_tokens=True)[0].strip()

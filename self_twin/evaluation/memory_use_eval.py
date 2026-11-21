@@ -45,6 +45,7 @@ from build_kobajin_train_v2 import (  # noqa: E402
 )
 from generation import generate_assistant_response  # noqa: E402
 from kobajin_likeness import CACHE, MODEL_ID, PROD_PROMPT, REVISION  # noqa: E402
+from base_models import load_base, pinned_revision  # noqa: E402
 from train import fit_context_to_length  # noqa: E402
 
 import re  # noqa: E402
@@ -112,6 +113,7 @@ def build_items(test_path: Path, count: int, seed: int) -> list[dict]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model-id", default=MODEL_ID, help="base model the adapters were trained on (training/base_models.py)")
     parser.add_argument("--adapter", action="append", default=[], help="name=path; base is always included")
     parser.add_argument("--test", type=Path, default=PROJECT / "dataset" / "test.jsonl")
     parser.add_argument("--items", type=int, default=40, help="items per kind")
@@ -124,19 +126,25 @@ def main() -> None:
     args = parser.parse_args()
 
     device = "mps" if torch.backends.mps.is_available() else "cuda"
-    processor = AutoProcessor.from_pretrained(MODEL_ID, revision=REVISION, cache_dir=CACHE, local_files_only=True)
+    # Prompts are fitted with the 4B processor, so every base model sees the same text.
+    reference = AutoProcessor.from_pretrained(MODEL_ID, revision=REVISION, cache_dir=CACHE, local_files_only=True)
     items = build_items(args.test, args.items, args.seed)
     prompts = []
     for item in items:
         system = f"{PROD_PROMPT}\n\n{memory_block(item['lines'])}"
         messages = [{"role": "system", "content": system}, *item["row"]["messages"][1:]]
-        fitted, _ = fit_context_to_length(processor, messages, args.max_length)
+        fitted, _ = fit_context_to_length(reference, messages, args.max_length)
         prompts.append(fitted[:-1] if fitted else None)
 
     adapters = [tuple(item.split("=", 1)) for item in args.adapter]
-    model = AutoModelForMultimodalLM.from_pretrained(
-        MODEL_ID, revision=REVISION, cache_dir=CACHE, dtype=torch.bfloat16, low_cpu_mem_usage=True, local_files_only=True
-    ).to(device)
+    if args.model_id == MODEL_ID:
+        processor = reference
+        model = AutoModelForMultimodalLM.from_pretrained(
+            MODEL_ID, revision=REVISION, cache_dir=CACHE, dtype=torch.bfloat16, low_cpu_mem_usage=True, local_files_only=True
+        )
+    else:
+        model, processor = load_base(args.model_id, pinned_revision(args.model_id), CACHE, torch.bfloat16)
+    model = model.to(device)
     if adapters:
         model = PeftModel.from_pretrained(model, adapters[0][1], adapter_name=adapters[0][0], is_trainable=False)
         for name, path in adapters[1:]:
@@ -144,6 +152,8 @@ def main() -> None:
     model.eval()
 
     report = {
+        "model_id": args.model_id,
+        "revision": REVISION if args.model_id == MODEL_ID else pinned_revision(args.model_id),
         "seed": args.seed,
         "items_per_kind": args.items,
         "min_shared_span": args.min_span,

@@ -31,6 +31,8 @@ merged/qwen35_4b_self_twin_experimental_*/tokenizer.json
 merged/qwen35_4b_self_twin_kobajin_*/*
 !merged/qwen35_4b_self_twin_kobajin_*/merge_receipt.json
 !merged/qwen35_4b_self_twin_kobajin_*/q4_rounding.json
+merged/lfm25_*/*
+!merged/lfm25_*/merge_receipt.json
 webllm/*.log
 merged/qwen35_4b_self_twin_experimental_*/*
 !merged/qwen35_4b_self_twin_experimental_*/merge_receipt.json

@@ -1,0 +1,319 @@
+{
+ "run": "evaluation/webllm_parity/v4-local-sampled.json",
+ "version": "local",
+ "template": "site",
+ "mode": "sampled",
+ "model": "merged/lfm25_1_2b_jp_self_twin_kobajin_clean_v2_20261122",
+ "summary": {
+  "prompts": 8,
+  "samples_per_prompt": 12,
+  "keyword_replies_webllm_vs_transformers": {
+   "好きな食べ物は何？": [
+    6,
+    4
+   ],
+   "民謡習ってたってほんと？": [
+    1,
+    4
+   ],
+   "TextBlurって何作ったの？": [
+    2,
+    1
+   ]
+  },
+  "han_without_kana_webllm_vs_transformers": [
+   1,
+   3
+  ]
+ },
+ "rows": [
+  {
+   "prompt": "好きな食べ物は何？",
+   "memory_keyword": "ナナチキ",
+   "webllm_keyword_replies": 6,
+   "transformers_keyword_replies": 4,
+   "webllm_han_without_kana": 1,
+   "transformers_han_without_kana": 2,
+   "webllm": [
+    "僕はナナチキ大好き",
+    "僕はナナチキ大好き",
+    "チーズ",
+    "メロン",
+    "僕はナナチキ大好き",
+    "僕はナナチキ大好き",
+    "うまいこと言ってるの聞こえなかった、正直",
+    "砂糖",
+    "僕はナナチキ大好き",
+    "僕はナナチキ大好き",
+    "カレー",
+    "パン"
+   ],
+   "transformers": [
+    "牛肉",
+    "カレー",
+    "トマト",
+    "牛乳",
+    "トースト",
+    "僕はナナチキ大好き",
+    "僕はナナチキ大好き",
+    "🤔\n僕はナナチキ大好き",
+    "アイスクリーム",
+    "カレー",
+    "僕はナナチキ大好き",
+    "好きな食べ物は何？"
+   ]
+  },
+  {
+   "prompt": "民謡習ってたってほんと？",
+   "memory_keyword": "民謡",
+   "webllm_keyword_replies": 1,
+   "transformers_keyword_replies": 4,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "え\nまじかよ",
+    "うん",
+    "民謡ってなんだ",
+    "2年前から",
+    "え？",
+    "うん",
+    "まじか",
+    "ほう",
+    "えぇ",
+    "僕もやってる",
+    "あー\nそれはそうかも",
+    "わかる"
+   ],
+   "transformers": [
+    "うん\n演奏したことないね",
+    "これから本格的に民謡に挑戦する",
+    "え\n僕も民謡習ってるの",
+    "なんか神すぎる\nつぎょいおもんないけど",
+    "民謡習ってるんだけど、",
+    "えぇ\n終わった\neg",
+    "神\nいや",
+    "いや僕も習ってた",
+    "いやそうじゃなくて",
+    "えぐ",
+    "もしかして、\nメロディーだけじゃないらしい",
+    "そうなんだよ\n僕の祖母が民謡好きで、毎日歌ってたんだ"
+   ]
+  },
+  {
+   "prompt": "TextBlurって何作ったの？",
+   "memory_keyword": "TextBlur",
+   "webllm_keyword_replies": 2,
+   "transformers_keyword_replies": 1,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "あの\n画像変換ってどうするんだろう？",
+    "なんか、うーん",
+    "作ったんだけどさ\nあー",
+    "初心者向けにやった\nなんか",
+    "あー",
+    "TextBlurって何",
+    "お、あれ",
+    "スピーカーフォン",
+    "あーね",
+    "TextBlur",
+    "僕は誰も作っていない",
+    "ちょっとした文法の字間調整とか"
+   ],
+   "transformers": [
+    "テキストを処理するライブラリ",
+    "TextBlurってさ\n1つ1つ点を処理する",
+    "テキスト処理のおもろいゲームを作った",
+    "なんかこれで作業する\nというか、それはコード2つあるけど",
+    "これ何",
+    "えぇ\n終わった\nあー",
+    "神\nいや",
+    "これ",
+    "おけ",
+    "えぐ",
+    "もっちー",
+    "自作した"
+   ]
+  },
+  {
+   "prompt": "好きなスポーツは？",
+   "memory_keyword": null,
+   "webllm_keyword_replies": null,
+   "transformers_keyword_replies": null,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 1,
+   "webllm": [
+    "僕の好きなスポーツは陸上",
+    "サッカー",
+    "いや",
+    "manga",
+    "僕はゴールしてるから自転車",
+    "僕はサッカー",
+    "スポーツ！？",
+    "エレクトロってさ、好きすぎる",
+    "僕は柔道",
+    "僕はラグビー",
+    "サッカー",
+    "1. 野球(?)\n2. バレーボール\n3. サッカー"
+   ],
+   "transformers": [
+    "テニス",
+    "サッカー",
+    "一番好きだし、自分もそう思ってる",
+    "サッカー",
+    "サッカー",
+    "僕は",
+    "僕はオールボーイ",
+    "I",
+    "僕は速い",
+    "野球",
+    "僕はサッカー",
+    "ラグビー"
+   ]
+  },
+  {
+   "prompt": "名前なんていうの？",
+   "memory_keyword": null,
+   "webllm_keyword_replies": null,
+   "transformers_keyword_replies": null,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "え、僕もそういう感じだよ",
+    "僕の名前はまだ作ってないから",
+    "それは違う",
+    "話す",
+    "え？",
+    "あー",
+    "いいなー",
+    "ごめん、許可が取れてないから言うの",
+    "名前あるんじゃね",
+    "あー",
+    "うん\nなんか",
+    "名前のない名前でうまくいってるよ\n今のうちは"
+   ],
+   "transformers": [
+    "名前は何もないけど、なんか自分が反論してるのに嘘言ってる",
+    "名前なんていうの？",
+    "え\n僕も名前だけでもないよ",
+    "なんか神すぎる\nだから僕も神",
+    "名前ない",
+    "えぇ\n終わった\neg",
+    "神\nいや",
+    "いや僕も名前の呼び方わかんない",
+    "いや、僕名付け忘れた",
+    "えぐ",
+    "僕は名前とかない\n代わりにコンテスト出る",
+    "名前はさ、名前って呼ぶんじゃなくて"
+   ]
+  },
+  {
+   "prompt": "おはよう",
+   "memory_keyword": null,
+   "webllm_keyword_replies": null,
+   "transformers_keyword_replies": null,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "おはよう",
+    "おはよう",
+    "おはよう",
+    "僕は今からこれを考える",
+    "おはよう",
+    "おはよう",
+    "お",
+    "💢",
+    "おはよう",
+    "おはよう",
+    "おはよう",
+    "やあ"
+   ],
+   "transformers": [
+    "やあ",
+    "おはよう\n今何時ちょうだい",
+    "o",
+    "おはよう\nめぐみ",
+    "おはよう",
+    "えぇ\n今は1時僕の寝る時間",
+    "おはよう",
+    "おはよう",
+    "おはよう\n3Dってガチで怖い",
+    "えぐ",
+    "おはよう",
+    "やあ"
+   ]
+  },
+  {
+   "prompt": "明日テストなんだけど何から勉強すればいい？",
+   "memory_keyword": null,
+   "webllm_keyword_replies": null,
+   "transformers_keyword_replies": null,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "あーね\n勉強が始まるの楽しみ",
+    "まあ、学校行くなら数学と理科から",
+    "まず数学から",
+    "ぶるー",
+    "あーね\n5時まで寝てるんじゃなくて",
+    "え？",
+    "自分なら前半で十分だと思う",
+    "電源オフだったから3Dパクってくる",
+    "なんだ",
+    "テストの問題を読んで勉強して",
+    "わかる\nじゃあ今作るべき！",
+    "w"
+   ],
+   "transformers": [
+    "テストなんだけど\n自分の問題でね",
+    "なんとなくわからんけど、1日でできることはあるかな",
+    "テストだし、自分だけでも十分勉強すると思ってた",
+    "なんかさ、テストはレポートが毎日出るから勉強する\nまあ、レポートのページ数が多いやん？",
+    "まず何から勉強してるか、まだわかんない",
+    "えぇ\n終わった\n3Dエンジン（？）",
+    "神\nいや",
+    "それは僕もわかんない\n最近ずっと勉強してるからそうだと思う",
+    "おけ",
+    "えぐ",
+    "わからん\n勉強するならインターネットで調べればいい",
+    "自作した勉強法でやってる\nあー"
+   ]
+  },
+  {
+   "prompt": "最近寒すぎない？",
+   "memory_keyword": null,
+   "webllm_keyword_replies": null,
+   "transformers_keyword_replies": null,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "今18度だった",
+    "いや、なんかおかしい気がする",
+    "それはそう",
+    "uお",
+    "今の寒さ？",
+    "いや、そう",
+    "なんと、最近気づいたんだけどさ。\n一番寒い時間帯に寝るのが正解で\n冷えるから",
+    "12度くらい",
+    "え",
+    "あー",
+    "最近寒い\nあー\nいやん",
+    "は？"
+   ],
+   "transformers": [
+    "まあそんな気はしてないけどね",
+    "これめんどいからどうしよう",
+    "え\nまった",
+    "なんか寒すぎてjimoさんの家にいこうかな",
+    "とうない",
+    "えぇ\n終わった\nあー",
+    "神\nいや",
+    "いや僕も寒い",
+    "いや問題ない",
+    "えぐ",
+    "寒さが好き",
+    "そうだ、昨日で\nえぐい"
+   ]
+  }
+ ]
+}

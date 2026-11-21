@@ -45,6 +45,16 @@ def receipt_path(model_id: str) -> Path:
     return HERE / spec(model_id)["receipt"]
 
 
+def pinned_revision(model_id: str) -> str:
+    """The immutable revision recorded in the model's pin receipt."""
+    import json
+
+    receipt = json.loads(receipt_path(model_id).read_text(encoding="utf-8"))
+    if receipt.get("repo_id") != model_id:
+        raise SystemExit(f"Pin receipt {receipt_path(model_id).name} is not for {model_id}")
+    return receipt["revision"]
+
+
 def training_chat_template(model_id: str) -> str | None:
     name = spec(model_id).get("training_chat_template")
     return (HERE / name).read_text(encoding="utf-8") if name else None

@@ -1,0 +1,100 @@
+{
+  "model_id": "LiquidAI/LFM2.5-1.2B-JP-202606",
+  "revision": "52b8b4475311a63bf839c6494f78f8ad59d13515",
+  "seed": 20261120,
+  "test_rows_scored": 240,
+  "generation_rows": 60,
+  "max_length": 768,
+  "decoding": {
+    "temperature": 0.72,
+    "top_p": 1.0,
+    "repetition_penalty": 1.12
+  },
+  "system_prompts": {
+    "prod": "次のグループ会話の「自分」として、最後の発言に自然な返事だけをしてください。最新…"
+  },
+  "adapters": {
+    "final": "adapter/experiment-r8-kobajin-clean-v2-memory-lfm25-1.2b-jp/adapter"
+  },
+  "real_reference_style": {
+    "n": 60,
+    "median_chars": 9.5,
+    "share_le5_chars": 0.317,
+    "share_gt100_chars": 0.0,
+    "mean_lines": 2.08,
+    "keigo_rate": 0.033,
+    "assistantism_rate": 0.0,
+    "synthetic_template_rate": 0.0,
+    "placeholder_only_rate": 0.0,
+    "repeated_span_rate": 0.017,
+    "boku_rate": 0.067,
+    "laugh_w_rate": 0.0,
+    "char_bigram_jsd_vs_real": 0.6075
+  },
+  "candidates": {
+    "base": {
+      "nll": {
+        "prod": {
+          "token_nll": 6.8533,
+          "perplexity": 946.96,
+          "char_nll": 4.8769,
+          "by_category": {
+            "conversation": 6.9942,
+            "long_explanation_or_story": 4.6042,
+            "question_or_prompt": 7.0103,
+            "reaction_or_joke": 7.6936,
+            "short_reaction": 9.5486,
+            "technical_or_project": 6.3859
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 132.5,
+        "share_le5_chars": 0.0,
+        "share_gt100_chars": 0.767,
+        "mean_lines": 1.08,
+        "keigo_rate": 0.067,
+        "assistantism_rate": 0.033,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.0,
+        "boku_rate": 0.717,
+        "laugh_w_rate": 0.0,
+        "char_bigram_jsd_vs_real": 0.5711
+      }
+    },
+    "final": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.4699,
+          "perplexity": 32.13,
+          "char_nll": 2.4692,
+          "by_category": {
+            "conversation": 3.5272,
+            "long_explanation_or_story": 2.6632,
+            "question_or_prompt": 3.8349,
+            "reaction_or_joke": 4.4942,
+            "short_reaction": 3.2783,
+            "technical_or_project": 3.5906
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 5.5,
+        "share_le5_chars": 0.5,
+        "share_gt100_chars": 0.0,
+        "mean_lines": 1.37,
+        "keigo_rate": 0.017,
+        "assistantism_rate": 0.0,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.0,
+        "boku_rate": 0.05,
+        "laugh_w_rate": 0.033,
+        "char_bigram_jsd_vs_real": 0.6591
+      }
+    }
+  }
+}

@@ -1,10 +1,13 @@
 ---
 language:
   - ja
-license: apache-2.0
+license: other
+license_name: apache-2.0-and-lfm1.0
+license_link: https://huggingface.co/kobajin/kobajinAI/blob/main/README.md#license
 tags:
   - kobajinai
   - qwen3.5
+  - lfm2
   - causal-language-model
   - gated-deltanet
   - hybrid-attention
@@ -16,14 +19,16 @@ tags:
   - mlc-llm
   - webgpu
   - gguf
-base_model: Qwen/Qwen3.5-4B
+base_model:
+  - Qwen/Qwen3.5-4B
+  - LiquidAI/LFM2.5-1.2B-JP-202606
 base_model_relation: finetune
 pipeline_tag: text-generation
 ---
 
 # kobajinAI
 
-kobajinAI is a chat model that tries to reply in kobajin's way of speaking. It is a LoRA fine-tune of [Qwen/Qwen3.5-4B](https://huggingface.co/Qwen/Qwen3.5-4B) (revision [`851bf6e`](https://huggingface.co/Qwen/Qwen3.5-4B/tree/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a)), merged into the base weights.
+kobajinAI is a chat model that tries to reply in kobajin's way of speaking. Each version is a LoRA fine-tune merged into its base weights: v1–v3 of [Qwen/Qwen3.5-4B](https://huggingface.co/Qwen/Qwen3.5-4B) (revision [`851bf6e`](https://huggingface.co/Qwen/Qwen3.5-4B/tree/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a)), and the light version v4 of [LiquidAI/LFM2.5-1.2B-JP-202606](https://huggingface.co/LiquidAI/LFM2.5-1.2B-JP-202606) (revision [`52b8b44`](https://huggingface.co/LiquidAI/LFM2.5-1.2B-JP-202606/tree/52b8b4475311a63bf839c6494f78f8ad59d13515)).
 
 **Main use: [https://kobajin.com/](https://kobajin.com/).** The site downloads one version's WebLLM bundle from this repository and runs it with WebGPU in the visitor's browser, so replies are generated on the visitor's own device.
 
@@ -38,17 +43,19 @@ Every trained version stays published, each in its own folder. The site loads ea
 | **v2** (site default) | [`v2/` at `1f9287d`](https://huggingface.co/kobajin/kobajinAI/tree/1f9287d837eb311f5d0ab9262240ab2ed362d87c/v2) | `kobajinAI-qwen35-4b-kobajin-clean-v2-1f9287d-q4f16_1-MLC` | Real chats, plus rows that practice using retrieved memories | Casual short replies. Uses memories, but sometimes brings in unrelated ones. |
 | v1 | [`v1/` at `8d6dab1`](https://huggingface.co/kobajin/kobajinAI/tree/8d6dab15195505c8c92c2d9ceb99f2551239f2d4/v1) | `kobajinAI-qwen35-4b-kobajin-clean-v1-8d6dab1-q4f16_1-MLC` | Real chats only | Casual short replies. Mostly ignores memories. |
 | v3 | [`v3/` at `0bc0bea`](https://huggingface.co/kobajin/kobajinAI/tree/0bc0bea14368ef51162f68ed5c545633ee567f15/v3) | `kobajinAI-qwen35-4b-luna-v3-a2534a2-q4f16_1-MLC` | Mostly synthetic examples written by Luna | Longer, advice-like replies; less like kobajin's real chats. |
+| v4 (light) | [`v4/` at `5c03457`](https://huggingface.co/kobajin/kobajinAI/tree/5c03457fbc811484733abae9e1fa1b55f42e4059/v4) | `kobajinAI-lfm25-1.2b-jp-kobajin-clean-v2-5c03457-q4f16_1-MLC` | The same data and method as v2, on the smaller LFM2.5-1.2B-JP | 0.66 GB, for phones, tablets and low-memory PCs. Uses memories like v2, but replies are often shorter than kobajin's and less like his real chats than v2. |
 
-The site's default is the version currently judged closest to kobajin (v2 since 2026-11-21). Visitors can pick another version on the site.
+The site's default is the version currently judged closest to kobajin (v2 since 2026-11-21). On devices that report less than 8 GB of memory, and on phones and tablets, the site starts on the light version v4 instead. Visitors can pick another version on the site.
 
 ## Files
 
 | Path | Format | Used by |
 |---|---|---|
 | `v1/`, `v2/`, `v3/` | MLC `q4f16_1` WebLLM bundle: `params_shard_*.bin`, `tensor-cache.json`, `mlc-chat-config.json`, tokenizer files | kobajin.com (WebLLM) |
+| `v4/` | The same, plus the base model's `LICENSE` and `NOTICE.md` (what was changed) | kobajin.com (WebLLM) |
 | `gguf/kobajinAI-v1-Q4_K_M.gguf`, `gguf/kobajinAI-v2-Q4_K_M.gguf`, `gguf/kobajinAI-v3-Q4_K_M.gguf` | GGUF `Q4_K_M` | llama.cpp and other GGUF runtimes, for local use. The site does not use them. |
 
-`q4f16_1` stores weights as 4-bit integers with float16 group scales. All three WebLLM bundles reuse WebLLM's prebuilt Qwen3.5-4B library.
+`q4f16_1` stores weights as 4-bit integers with float16 group scales. v1–v3 reuse WebLLM's prebuilt Qwen3.5-4B library, and v4 reuses its prebuilt LFM2.5-1.2B-Instruct library (`LFM2.5-1.2B-Instruct-q4f16_1-MLC`; the tensors have the same names and shapes). There is no GGUF of v4.
 
 v3 was first uploaded to the repository root (revision [`a2534a2`](https://huggingface.co/kobajin/kobajinAI/tree/a2534a20253d54cce925307fbd76086498b09a11)) and moved to `v3/` in [`0bc0bea`](https://huggingface.co/kobajin/kobajinAI/commit/0bc0bea14368ef51162f68ed5c545633ee567f15) without changing any file. kobajin.com still loads v3 from the root of `a2534a2`, so visitors who already downloaded it do not download it again.
 
@@ -101,6 +108,8 @@ const reply = await engine.chat.completions.create({
 });
 ```
 
+For v4, start from `LFM2.5-1.2B-Instruct-q4f16_1-MLC` instead, with `model_id` `kobajinAI-lfm25-1.2b-jp-kobajin-clean-v2-5c03457-q4f16_1-MLC` and `model` `https://huggingface.co/kobajin/kobajinAI/resolve/5c03457fbc811484733abae9e1fa1b55f42e4059/v4/`. Keep the bundle's own `lfm2` template (no `conv_config` override) and do not send `enable_thinking`: WebLLM then adds an empty `<think>` block, which v4 was not trained with.
+
 ## Prompt and decoding
 
 The models were trained and evaluated with this system prompt (the site's prompt). The user message is the recent chat log, one line per message, in the form `MM-DD HH:MM 【参加者A】…` (the model's own earlier lines are `【自分】`). The site may add a block of retrieved memory candidates after the system prompt.
@@ -132,14 +141,17 @@ llama.cpp's repetition penalty looks at the last 64 tokens, including prompt tok
 
 Measured on held-out real conversations that were not used in training, with the merged BF16 checkpoints in Transformers, the system prompt above, and the site's decoding. Lower NLL means the model assigns more probability to kobajin's real replies.
 
-| | Base Qwen3.5-4B | v1 | v2 | v3 |
-|---|---|---|---|---|
-| Token NLL of kobajin's real replies (240 held-out) | 4.826 | **3.617** | 3.639 | 4.332 |
-| Relevant memories used (29 cases) | 6 | 0 | **27** | 1 |
-| Unrelated memories wrongly used (40 cases) | 3 | **0** | 6 | **0** |
-| Fixed memory questions answered with the memory (3) | — | 0 | **2** | 1 (unclear) |
+| | Base Qwen3.5-4B | v1 | v2 | v3 | Base LFM2.5-1.2B-JP | v4 |
+|---|---|---|---|---|---|---|
+| Token NLL of kobajin's real replies (240 held-out) | 4.826 | **3.617** | 3.639 | 4.332 | — | — |
+| NLL per character of the same replies | 2.863 | — | **2.287** | — | 4.306 | 2.414 |
+| Relevant memories used (29 cases) | 6 | 0 | 27 | 1 | 12 | **29** |
+| Unrelated memories wrongly used (40 cases) | 3 | **0** | 6 | **0** | 26 | 7 |
+| Fixed memory questions answered with the memory (3) | — | 0 | **2** | 1 (unclear) | — | 1 |
 
-kobajin's real replies have a median of 9.5 characters; v2's generated replies also have a median of 9.5 characters. v3 replies are much longer (median 34 characters) and often contain template phrases from its synthetic data that kobajin does not use.
+Token NLL depends on the tokenizer, so it is only comparable among v1–v3; NLL per character compares models with different tokenizers (only the reply text is scored).
+
+kobajin's real replies have a median of 9.5 characters; v2's generated replies also have a median of 9.5 characters, and v4's 5.5 (half of v4's replies are 5 characters or fewer, against a third of kobajin's). v3 replies are much longer (median 34 characters) and often contain template phrases from its synthetic data that kobajin does not use.
 
 These numbers come from small test sets and are not a general quality benchmark. They do not show that any version is better than the base model at general tasks.
 
@@ -147,20 +159,23 @@ These numbers come from small test sets and are not a general quality benchmark.
 
 - **The replies are not kobajin's real words or facts.** All versions sometimes make up plans, situations, and personal details (for example, "今から2時間かけて3D作るぞ！！"). Do not treat anything the model says as a statement by kobajin.
 - v2 brings unrelated memories into a reply in about 15% of tested cases and often repeats a memory nearly word for word.
-- v1 and v2 often give very short reactions ("ohhh", "www", "えぐい") even when a longer answer would help.
+- v1 and v2 often give very short reactions ("ohhh", "www", "えぐい") even when a longer answer would help; v4 does so more often.
+- v4 is less like kobajin than v2 on every measure above except memory use, and it is more affected by the 4-bit quantization: on 8 fixed prompts, Transformers' top token matched WebLLM's for 94.5 % of tokens (v2: 98.7 %).
 - The 4-bit quantization changes the output slightly from the BF16 checkpoints that were evaluated. On 8 fixed prompts with greedy decoding, v2's WebLLM bundle gave the same reply as Transformers for 4 prompts and v2's GGUF Q4_K_M for 6 (both had the same prompt as Transformers for all 8). v1 and v3 GGUF were only checked to load and reply.
 - The models are tuned for casual Japanese group chat. They are not suitable for factual questions, advice that matters, or other languages.
 
 ## Training
 
-- Base: `Qwen/Qwen3.5-4B` at revision `851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a`
+- Base (v1–v3): `Qwen/Qwen3.5-4B` at revision `851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a`
 - Method: LoRA rank 8, 1 epoch, merged into the base in BF16 with PEFT `merge_and_unload()`
 - v1: learning rate 5e-5, 17,830 steps, adapter sha256 `75feda45165454f6cfca0670f0d641f41926da81fb9edc26dfd534cb4d71b4ee`
 - v2: learning rate 5e-5, 17,400 steps, adapter sha256 `7a7a7721888c94f50f6f9ca2fba6c65c7f9d286cf0665ea27e5ca53ce91887ba`
 - v3: adapter sha256 `0950b43f3f93d7c21938128f017a97a5ff803fd36b8aaf7ed1c6d44b932fe3de`
+- v4: base `LiquidAI/LFM2.5-1.2B-JP-202606` at revision `52b8b4475311a63bf839c6494f78f8ad59d13515`, the same data and settings as v2 (one row longer than 768 tokens dropped), 17,399 steps, adapter sha256 `c74edaae34ea0c24f7987d7a91abfc0d57060cff869a2589e704f0ec179f5f3d`
 
 The training data came from kobajin's own Discord conversations, with other participants anonymized. That data, the memory store, and the evaluation prompts are kept private and are not in this repository. Only the model weights, tokenizer, and configuration are published.
 
 ## License
 
-Apache-2.0, the same as the base model.
+- `v1/`, `v2/`, `v3/` and `gguf/`: Apache-2.0, the same as their base model Qwen3.5-4B.
+- `v4/`: the LFM Open License v1.0 of its base model LFM2.5-1.2B-JP (`v4/LICENSE`). kobajin changed the base model's files (fine-tuned, merged and converted them); `v4/NOTICE.md` says what was changed. The license limits commercial use by organizations with annual revenue of US$10 million or more.

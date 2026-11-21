@@ -2,6 +2,18 @@
 
 ## 状態
 
+2026-11-22 v4（軽量版、LFM2.5-1.2B-JP）を評価し、公開した。
+
+- 学習: `training/run_small_v2.sh`でv2と同じ設定（17,399 step、2時間17分）。validation loss（LFMのトークン単位）は2,000 stepごとに3.394→3.145で、最後のcheckpointが最小。adapter sha256 `c74edaae34ea0c24f7987d7a91abfc0d57060cff869a2589e704f0ec179f5f3d`。
+- 評価（`evaluation/eval_small_v2.sh`）: v2と同じ行・プロンプト（4Bのprocessorで同じ文に揃えた）・system prompt（sha256 `4bc750d8…`）・デコード設定で、素のLFMとv2と比べた。評価スクリプトに`--model-id`を足し、LFMでも動くようにした。
+  - 本人の実際の返事240件の1文字あたりNLL（`base_size_screen.json`、低いほど近い）: v2 `2.287`、v4 `2.414`、素のQwen3.5-4B `2.863`、素のLFM `4.306`。v4は素のLFMから大きく下がったが、v2には届かない。
+  - 60件の生成（`kobajin_likeness-clean-v2-lfm25-1.2b-jp.json`）: 中央値5.5字、5字以下50%（本人9.5字・32%、v2 9.5字・33%）。敬語1.7%、アシスタント口調0%、反復0%。素のLFMは中央値132.5字、100字超77%のアシスタント文。v4は本人より短く、相づちだけの返事が多い。文脈に沿った返事（「顔ではなかった」）もあるが、「僕はまだ中学から高校生」のような作り話や、意味の通らない返事も残る。
+  - 記憶テスト（`memory_use-clean-v2-lfm25-1.2b-jp.json`）: 関係する記憶を使えたのは29/29（v2 27/29、素のLFM 12/29）。無関係な記憶を誤って使ったのは7/40（v2 6/40、素のLFM 26/40）。
+  - 固定35件（`benchmark-r8-kobajin-clean-v2-lfm25-1.2b-jp-final-sampled.json`）: 記憶質問はRAGありでナナチキ「僕はナナチキ大好き」の1/3（v2 2/3）。民謡は「それは今の浜松さん」、TextBlurは「うん」。会話31件のchar ROUGE-L-F1は`0.0813`（v2 `0.0952`、素のLFM `0.1053`）。中央値6字、5字以下16/35（v2 10字・11/35）。【参加者】・【URL】の漏れ0件、「うんこ」0件（v2 2件）。
+- WebLLMでの確認: merge（`merged/lfm25_1_2b_jp_self_twin_kobajin_clean_v2_20261122`）→ q4f16_1変換（`webllm/hf-upload/kobajin-clean-v2-lfm25`、0.66 GB、185テンソル）。パリティページの8件で、プロンプトはTransformersと8/8一致、greedyの返事は4/8一致（v2も4/8）、Transformersのtop-1とWebLLMのトークンの一致は94.5%（v2 98.7%）、log確率の差の平均0.20（v2 0.094）。差の原因を確かめるため、バンドルの4bit重みをTransformersに戻して同じトークンを読ませると、WebLLMとの差は平均0.015になった。変換は正しく、差は4bit丸めそのもので、1.2Bのモデルは4Bより丸めの影響を受けやすい。サイトと同じデコードの12回ずつでは、ナナチキを使った返事はWebLLM 6/12、Transformers 4/12だった（v2はWebLLM 1/12）。
+- 判断: 全バージョン公開の方針に従い、v4として`kobajin/kobajinAI`の`v4/`に上げた（commit [`5c03457`](https://huggingface.co/kobajin/kobajinAI/commit/5c03457fbc811484733abae9e1fa1b55f42e4059)、33ファイルをサイズとsha256で確認）。LFM Open License v1.0に従い、`v4/LICENSE`（原文のまま）と変更の告知`v4/NOTICE.md`を同梱した。v4はv2より本人の返事から遠く、短すぎる返事が多いので、サイトの初期値はv2のまま（`src/closest_model.json`は変更なし）。メモリの少ない端末（8GB未満、スマホ・タブレット）では、ownerの決定（2026-11-22）どおりv4が最初に選ばれる。
+- 未確認: 実際の4GBタブレットやスマホでの動作と速度。デスクトップのアプリ内ブラウザでスマホ表示を模して、公開したv4が`5c03457/v4/`から読み込まれ、投稿を書くことまでは確認した。
+
 2026-11-22 低メモリ端末（8GBのMac、4GBのタブレット、スマホ）向けの小型版を選び、v2と同じ方法で学習を始めた（ownerの依頼）。
 
 - 候補の選び方: 学習前の素のモデルで、test split（学習に未使用）の本人の実際の返事240件を、本番system promptのもとで採点した（`evaluation/base_size_screen.py`、結果は`evaluation/base_size_screen.json`）。トークナイザが違うモデルを比べるため、トークンではなく1文字あたりのNLLを使う（低いほど本人の返事に近い）。Qwen3.5-4B `2.863`、2B `2.906`、0.8B `2.984`、MiniCPM5-2B `3.203`、MiniCPM5-1B `3.259`、LFM2.5-1.2B-JP `4.306`。4Bのトークンあたり値`4.751`は以前の測定（`4.826`、終端トークン込み）とほぼ一致した。

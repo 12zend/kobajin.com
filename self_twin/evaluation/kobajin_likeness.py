@@ -12,6 +12,11 @@ Two complementary checks, both on the chronological test split (never trained on
    compared to the real reply distribution (length, register, assistant-isms,
    synthetic template phrases, placeholders, repetition, char-bigram distance).
 
+Contexts are always fitted with the Qwen3.5-4B processor, so every base model
+(--model-id) sees the same rows and text. Per-token NLL is only comparable
+within one tokenizer; char_nll (the same loss over the reply's characters) is
+the cross-model number.
+
 Neither number is a substitute for reading the outputs; the generations file
 keeps every prompt/reply pair for review.
 """
@@ -39,6 +44,7 @@ sys.path.insert(0, str(PROJECT / "training"))
 sys.path.insert(0, str(HERE))
 from generation import generate_assistant_response  # noqa: E402
 from summarize_benchmark import has_repeated_span  # noqa: E402
+from base_models import load_base, pinned_revision, text_tokenizer  # noqa: E402
 from train import fit_context_to_length  # noqa: E402
 
 MODEL_ID = "Qwen/Qwen3.5-4B"
@@ -90,7 +96,7 @@ def fitted_context(processor, row: dict, system: str, max_length: int) -> str | 
 @torch.inference_mode()
 def target_nll(model, processor, system: str, context: str, target: str, device: str) -> tuple[float, int]:
     prefix = prompt_ids(processor, system, context)
-    target_ids = processor.tokenizer.encode(target + "<|im_end|>", add_special_tokens=False)
+    target_ids = text_tokenizer(processor).encode(target + "<|im_end|>", add_special_tokens=False)
     input_ids = torch.tensor([prefix + target_ids], device=device)
     logits = model(input_ids=input_ids).logits[0, len(prefix) - 1 : -1].float()
     labels = input_ids[0, len(prefix) :]
@@ -141,6 +147,7 @@ def style_profile(texts: list[str], reference_bigrams: collections.Counter) -> d
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model-id", default=MODEL_ID, help="base model the adapters were trained on (training/base_models.py)")
     parser.add_argument("--adapter", action="append", default=[], help="name=path; base is always included")
     parser.add_argument("--test", type=Path, default=PROJECT / "dataset" / "test.jsonl")
     parser.add_argument("--nll-samples", type=int, default=240)
@@ -167,19 +174,24 @@ def main() -> None:
     if device == "cpu":
         raise SystemExit("No GPU device")
 
-    processor = AutoProcessor.from_pretrained(MODEL_ID, revision=REVISION, cache_dir=CACHE, local_files_only=True)
+    reference = AutoProcessor.from_pretrained(MODEL_ID, revision=REVISION, cache_dir=CACHE, local_files_only=True)
     rows = load_rows(args.test, args.nll_samples, args.seed)
     all_test = [json.loads(line) for line in args.test.open(encoding="utf-8") if line.strip()]
     reference_bigrams = bigram_counts([clean_target(row["messages"][-1]["content"]) for row in all_test])
-    contexts = {variant: [fitted_context(processor, row, PROMPTS[variant], args.max_length) for row in rows] for variant in variants}
+    contexts = {variant: [fitted_context(reference, row, PROMPTS[variant], args.max_length) for row in rows] for variant in variants}
     keep = [i for i in range(len(rows)) if all(contexts[v][i] is not None for v in variants)]
     rows = [rows[i] for i in keep]
     contexts = {v: [contexts[v][i] for i in keep] for v in variants}
     gen_rows = list(range(min(args.gen_samples, len(rows))))
 
-    model = AutoModelForMultimodalLM.from_pretrained(
-        MODEL_ID, revision=REVISION, cache_dir=CACHE, dtype=torch.bfloat16, low_cpu_mem_usage=True, local_files_only=True
-    ).to(device)
+    if args.model_id == MODEL_ID:
+        processor = reference
+        model = AutoModelForMultimodalLM.from_pretrained(
+            MODEL_ID, revision=REVISION, cache_dir=CACHE, dtype=torch.bfloat16, low_cpu_mem_usage=True, local_files_only=True
+        )
+    else:
+        model, processor = load_base(args.model_id, pinned_revision(args.model_id), CACHE, torch.bfloat16)
+    model = model.to(device)
     model.eval()
     if adapters:
         model = PeftModel.from_pretrained(model, adapters[0][1], adapter_name=adapters[0][0], is_trainable=False)
@@ -190,6 +202,8 @@ def main() -> None:
     candidates = ([] if args.skip_base else ["base"]) + [name for name, _ in adapters]
     previous = json.loads(args.output.read_text(encoding="utf-8")) if args.output.exists() else {}
     report = {
+        "model_id": args.model_id,
+        "revision": REVISION if args.model_id == MODEL_ID else pinned_revision(args.model_id),
         "seed": args.seed,
         "test_rows_scored": len(rows),
         "generation_rows": len(gen_rows),
@@ -220,7 +234,7 @@ def main() -> None:
             result: dict = {"nll": {}}
             for variant in ([] if args.skip_nll else variants):
                 per_category: dict = collections.defaultdict(lambda: [0.0, 0])
-                total_loss, total_tokens = 0.0, 0
+                total_loss, total_tokens, total_chars = 0.0, 0, 0
                 for index, row in enumerate(rows):
                     loss, tokens = target_nll(
                         model, processor, PROMPTS[variant], contexts[variant][index],
@@ -228,12 +242,14 @@ def main() -> None:
                     )
                     total_loss += loss
                     total_tokens += tokens
+                    total_chars += len(clean_target(row["messages"][-1]["content"]))
                     bucket = per_category[row["metadata"]["category"]]
                     bucket[0] += loss
                     bucket[1] += tokens
                 result["nll"][variant] = {
                     "token_nll": round(total_loss / total_tokens, 4),
                     "perplexity": round(math.exp(total_loss / total_tokens), 2),
+                    "char_nll": round(total_loss / total_chars, 4),
                     "by_category": {
                         category: round(loss / tokens, 4) for category, (loss, tokens) in sorted(per_category.items())
                     },

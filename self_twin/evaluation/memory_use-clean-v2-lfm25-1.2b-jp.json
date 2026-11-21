@@ -1,0 +1,26 @@
+{
+  "model_id": "LiquidAI/LFM2.5-1.2B-JP-202606",
+  "revision": "52b8b4475311a63bf839c6494f78f8ad59d13515",
+  "seed": 20261121,
+  "items_per_kind": 40,
+  "min_shared_span": 5,
+  "decoding": {
+    "temperature": 0.72,
+    "top_p": 1.0,
+    "repetition_penalty": 1.12,
+    "max_new_tokens": 160
+  },
+  "adapters": {
+    "lfm25-1_2b-jp": "adapter/experiment-r8-kobajin-clean-v2-memory-lfm25-1.2b-jp/adapter"
+  },
+  "candidates": {
+    "base": {
+      "relevant_memory_used": "12/29",
+      "distractor_memory_used": "26/40"
+    },
+    "lfm25-1_2b-jp": {
+      "relevant_memory_used": "29/29",
+      "distractor_memory_used": "7/40"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "base_repo": "LiquidAI/LFM2.5-1.2B-JP-202606",
+  "base_revision": "52b8b4475311a63bf839c6494f78f8ad59d13515",
+  "adapter_path": "/Users/kobajin/repo/kobajin.com/self_twin/adapter/experiment-r8-kobajin-clean-v2-memory-lfm25-1.2b-jp/adapter",
+  "adapter_sha256": "c74edaae34ea0c24f7987d7a91abfc0d57060cff869a2589e704f0ec179f5f3d",
+  "evaluation_decision": "/Users/kobajin/repo/kobajin.com/self_twin/evaluation/decision.json",
+  "evaluation_gate_passed": false,
+  "experimental_unapproved_merge": false,
+  "owner_release_version": "v4",
+  "candidate_name": "v4",
+  "evaluation_reason": "Owner policy (2026-11-21): every trained version is published to kobajin/kobajinAI and selectable on the site. Its evaluation is in self_twin/training/training_report.md; publishing it does not claim it is better than the base or other versions.",
+  "merge_method": "PEFT PeftModel.merge_and_unload()",
+  "dtype": "bfloat16",
+  "format": "Transformers Safetensors",
+  "base_preserved": true,
+  "tokenizer_and_chat_template_saved": true
+}

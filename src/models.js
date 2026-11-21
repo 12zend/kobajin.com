@@ -75,6 +75,14 @@ export const MODELS = [
     summary: "Mostly Luna-written examples. Longer, advice-like replies.",
     note: "Lunaが書いた例が中心。長めでアドバイス寄りの返事になりやすい。",
   },
+  {
+    version: "v4",
+    family: "lfm2.5-1.2b",
+    id: "kobajinAI-lfm25-1.2b-jp-kobajin-clean-v2-5c03457-q4f16_1-MLC",
+    url: `${REPO}/5c03457fbc811484733abae9e1fa1b55f42e4059/v4/`,
+    summary: "Light version: LFM2.5 1.2B trained like v2. Shorter replies.",
+    note: "軽量版。v2と同じデータと方法で、小さいLFM2.5-1.2B-JPを学習。返事は短めで、v2より本人らしさは少し下がる。",
+  },
 ];
 
 // Development only: `VITE_LOCAL_MODEL=<family>=<bundle URL>` adds a "local"
