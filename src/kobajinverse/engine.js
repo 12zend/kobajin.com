@@ -7,12 +7,13 @@ import { MODELS, findModel } from "../models.js";
 // version first, and stops a version that is still loading, so two
 // versions are never in memory together. A browser-wide lock (Web Locks)
 // keeps it to one tab too: a tab that starts the model takes it from any
-// other tab, which goes back to the mock (onEvict). WebLLM itself is
+// other tab, which goes back to the start screen (onEvict). WebLLM itself is
 // imported only here, on first use, so a visitor who never starts the
 // model never downloads it.
 
-const DEV_FLAGS = import.meta.env.DEV ? new URLSearchParams(location.search) : new URLSearchParams();
-// `?no-webgpu` (dev only) previews the unsupported-browser state.
+export const DEV_FLAGS = import.meta.env.DEV ? new URLSearchParams(location.search) : new URLSearchParams();
+// Dev only: `?no-webgpu` previews the unsupported-browser state, and
+// `?mock` skips the start screen and runs on the mock.
 export const HAS_WEBGPU = Boolean(navigator.gpu) && !DEV_FLAGS.has("no-webgpu");
 
 // The timeline's prompts are short: the system prompt, at most three

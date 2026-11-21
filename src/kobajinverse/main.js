@@ -1,7 +1,7 @@
 // kobajinverse: wires the page together and starts the timeline.
 //
 //   llm.js, mock_llm.js, prompts.js   inference (one complete(task, input) call)
-//   engine.js, model_picker.js        the WebLLM engine and which version runs
+//   engine.js, model_picker.js        the WebLLM engine, start screen, and version
 //   brain.js, safety.js               queue, cleanup, gates, and parsing
 //   accounts.js, state.js, store.js   who is here, what this visit holds, saving it
 //   dom.js, render.js                 HTML for posts, threads, and users
@@ -15,7 +15,7 @@
 import { setupComposer, focusComposer, insertText, syncComposer } from "./composer.js";
 import { focusSearch, setFollow, setupFeed, setView, showPost, view } from "./feed.js";
 import { catchUp, postLoop, rememberPosts, seedTimeline } from "./autopost.js";
-import { setupModelPicker } from "./model_picker.js";
+import { modelReady, setupModelPicker } from "./model_picker.js";
 import { onNotify, renderNotifications, unreadCount } from "./notifications.js";
 import { setupPicker } from "./picker.js";
 import { setupPostControls } from "./post_controls.js";
@@ -88,11 +88,15 @@ paintBadges();
 renderUsers();
 refreshAll(posts);
 syncComposer();
-startTimeline().catch(console.error).finally(() => {
-  catchUpOnReturn();
-  postLoop();
+// The timeline is written by kobajinAI, so it starts once a version is
+// running; until then the start screen covers the page (model_picker.js).
+modelReady.then(() => {
+  startTimeline().catch(console.error).finally(() => {
+    catchUpOnReturn();
+    postLoop();
+  });
+  trendLoop();
 });
-trendLoop();
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   navigator.serviceWorker.register("/sw.js").catch(() => { /* the page works without it */ });

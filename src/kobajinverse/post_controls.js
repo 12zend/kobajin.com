@@ -3,7 +3,6 @@ import { react, repost, visitorReply } from "./actions.js";
 import { LIMIT } from "./composer.js";
 import { toast } from "./dom.js";
 import { applyFilters } from "./feed.js";
-import { wakeModel } from "./model_picker.js";
 import { openMenu, openPicker } from "./picker.js";
 import { avatar, feedEl, refresh } from "./render.js";
 import { shareCard } from "./share.js";
@@ -48,7 +47,6 @@ function openReplyBox(article, post, toId, parentText) {
     const text = box.value.trim();
     if (!text || chars(text).length > LIMIT) return;
     closeReplyBox();
-    wakeModel();
     visitorReply(post, toId, parentText, text);
     toast("返信しました");
   });

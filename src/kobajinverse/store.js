@@ -37,8 +37,12 @@ function reviveReply(reply) {
   return Object.keys(reactions).length ? { ...rest, reactions } : rest;
 }
 
+// Lines the mock wrote on earlier visits are dropped: the site shows only
+// what kobajinAI wrote (llm.js).
+const fromModel = (line) => line.source !== "mock";
+
 function revive(data) {
-  if (!data || !/^p\d+$/.test(data.id) || !known(data.authorId) || typeof data.text !== "string") return null;
+  if (!data || !/^p\d+$/.test(data.id) || !known(data.authorId) || typeof data.text !== "string" || !fromModel(data)) return null;
   return {
     id: data.id,
     authorId: data.authorId,
@@ -48,7 +52,7 @@ function revive(data) {
     reactions: new Map((data.reactions || []).filter(([emoji]) => allowed(emoji)).map(([emoji, who]) => [emoji, new Set((who || []).filter(known))]).filter(([, who]) => who.size)),
     reposts: new Set((data.reposts || []).filter(known)),
     bookmarked: Boolean(data.bookmarked),
-    replies: (data.replies || []).filter((reply) => known(reply.authorId) && known(reply.toId) && typeof reply.text === "string").map(reviveReply),
+    replies: (data.replies || []).filter((reply) => known(reply.authorId) && known(reply.toId) && typeof reply.text === "string" && fromModel(reply)).map(reviveReply),
     drafts: [],
     typing: new Set(),
   };

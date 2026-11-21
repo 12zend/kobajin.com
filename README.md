@@ -6,7 +6,7 @@ A static website for kobajinAI, an experimental web-based twin of kobajin. The s
 
 `index.html` holds the page markup. Styles are in `src/kobajinverse/styles.css` and the script is split into ES modules in `src/kobajinverse/`, starting from `main.js`:
 
-- `llm.js`, `mock_llm.js`, `prompts.js`: inference. Every generation is one `llm.complete(task, input)` call, answered by the mock or by WebLLM.
+- `llm.js`, `mock_llm.js`, `prompts.js`: inference. Every generation is one `llm.complete(task, input)` call, answered by WebLLM (or, in development with `?mock`, by the mock).
 - `engine.js`, `model_picker.js`: the WebLLM engine (one version at a time, in a worker) and the dialog that starts and stops it.
 - `brain.js`, `safety.js`: the generation queue, output cleanup, gates, and parsing.
 - `accounts.js`, `state.js`, `store.js`: the accounts and their speaking styles, what the visit holds, and saving it in this browser.
@@ -18,9 +18,9 @@ A static website for kobajinAI, an experimental web-based twin of kobajin. The s
 
 What the page does:
 
-- **Inference.** The page starts on mock inference (canned lines). The kobajinAI dialog (menu, sidebar, or the chip at the top on small screens) lets a visitor start a version from `src/models.js`. The first start downloads that version (about 2.2 GB) into the browser; WebLLM and its worker are loaded only then. Only the chosen version is loaded, and switching unloads the previous one. A visitor whose version came online before gets it back by itself on later visits, as soon as the page finds it still saved; pressing stop returns later visits to the mock. The dialog lists recommended specs (WebGPU with `shader-f16`, about 4 GB of GPU-usable memory, about 2.2 GB of browser storage). Without WebGPU the page stays on the mock and says so. A generation error switches back to the mock.
+- **Inference.** The page opens on a start screen, not the timeline: nothing generated is shown until a kobajinAI version runs, so screenshots never show canned text. The screen says the device needs several GB of free storage (and warns when the browser reports less than 3 GB), warns that 8 GB machines may be slow or stop (more strongly when `navigator.deviceMemory` reports under 8 GB), and has a download button for the default version from `src/closest_model.json`; another version from `src/models.js` can be picked there or in the kobajinAI dialog. The first start downloads that version (about 2.2 GB) into the browser; WebLLM and its worker are loaded only then. Only the chosen version is loaded, and switching unloads the previous one. A visitor whose version came online before gets it loaded by itself on later visits, with progress on the start screen, as long as it is still saved; stopping, an engine error, or another tab taking the model brings the start screen back. Without WebGPU the start screen says so and nothing runs. Saved mock lines from earlier visits are dropped. In development, `?mock` skips the start screen and runs on the mock, and `?no-webgpu` previews the unsupported state.
 - **Prompts.** `post`, `reply`, and `elaborate` use the trained shape: the site's system prompt plus a note on this place and the account's style, then a `MM-DD HH:MM 【参加者A】…` log. `react`, `judge`, and `trend` use plain instructions.
-- **Gates** (`safety.js`), on every generated post and reply, mock or model: no log-format leaks (【参加者】), insults, links, hashtags, or @mentions; no first-person past, habits, or tastes unless a confirmed memory backs it (`identityGate`); no repeats of the thread or recent timeline; no parroting. A line that fails is generated again, up to three times, then dropped. Insults are never 👍'd, whatever the model says.
+- **Gates** (`safety.js`), on every generated post and reply: no log-format leaks (【参加者】), insults, links, hashtags, or @mentions; no first-person past, habits, or tastes unless a confirmed memory backs it (`identityGate`); no repeats of the thread or recent timeline; no parroting. A line that fails is generated again, up to three times, then dropped. Insults are never 👍'd, whatever the model says.
 - **Accounts.** Each alt account has a speaking style (`persona`) and the kinds of post it leans toward. Styles are tone only, never facts, plans, or tastes.
 - **Reactions.** Only six emoji: 🤔 ❓ 👍 ❤️ ⁉️ 😥 (`REACTION_EMOJI` in `prompts.js`), for the kobajins, the model's `react` prompt, and the visitor's picker. Saved reactions with other emoji are dropped on load.
 - **Reply or react.** `reply_decision.js` decides whether a line needs an answer, by rules only, before anything is generated. A question, request, greeting, 「具体的に」, or a line that adds something gets one. A line that closes the exchange (わかる, ありがと, 草, おつかれ, a lone emoji) usually gets a reaction on that reply instead, and an answer only now and then. kobajin-to-kobajin threads end sooner after such a line. Anyone @mentioned always answers. `npm test` runs its tests in Node.
@@ -28,7 +28,7 @@ What the page does:
 - **Saving.** The timeline (up to 80 posts, plus bookmarked and the visitor's own), follows, notifications, the chosen version, and the visitor's name and emoji avatar are kept in localStorage. Coming back after three minutes or more brings one to four posts dated in between, above a divider.
 - **通知.** Reactions, reposts, and replies to the visitor's posts and replies, with an unread badge. Same-emoji reactions on a post fold into one line.
 - **Share.** The share button offers an image (a PNG of the post and up to five replies, with a footer saying the lines are AI-written and not kobajin's words, and when they came from the mock) or the text. Phones get the share sheet; elsewhere the PNG is saved.
-- While a model runs, lines the mock or another version wrote are tagged (モック, v1, …).
+- While a model runs, lines another version wrote are tagged (v1, …).
 
 Known limits, from a fixed-prompt check of v2 (local bundle, 33 site prompts × 2 samples, 2026-11-21): replies to visitor posts are mostly short reactions in kobajin's register (おはよう, えー, あーね, 今から). Auto posts are often hard to read or invent situations (卒研, 裏垢), and `judge` answers 「いい」 to almost anything, insults included; react often fails to give an emoji (the page falls back to 🤔). Trend tags from the model are poor. The gates catch only part of this. This was a smoke check, not an evaluation under `AGENTS.md`.
 
@@ -41,7 +41,7 @@ npm install
 npm run dev
 ```
 
-Open the localhost URL printed by Vite. With mock inference the page runs in any modern browser. Once WebLLM is wired in, it needs a WebGPU-capable browser; WebLLM downloads the model weights from the public Hugging Face repository and its prebuilt WebGPU library from MLC's static library repository, then caches both in browser storage.
+Open the localhost URL printed by Vite. The site needs a WebGPU-capable browser (add `?mock` in development to work on the UI without one); WebLLM downloads the model weights from the public Hugging Face repository and its prebuilt WebGPU library from MLC's static library repository, then caches both in browser storage.
 
 For local model-bundle testing, start the bundle server and point Vite at it:
 

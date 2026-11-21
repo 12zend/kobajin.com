@@ -2,7 +2,6 @@ import { VISITOR } from "./accounts.js";
 import { choreograph } from "./actions.js";
 import { $, toast } from "./dom.js";
 import { setView, showPost, view } from "./feed.js";
-import { wakeModel } from "./model_picker.js";
 import { openPicker } from "./picker.js";
 import { newPost } from "./state.js";
 import { trendTags } from "./trends.js";
@@ -71,7 +70,6 @@ export function setupComposer() {
     input.value = "";
     syncComposer();
     if (!onTimeline()) setView("all");
-    wakeModel();
     const post = newPost(VISITOR.id, text);
     showPost(post);
     window.scrollTo({ top: 0, behavior: "smooth" });
