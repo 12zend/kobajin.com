@@ -1,160 +1,1039 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
-    <meta name="description" content="Chat with kobajinAI, an experimental AI twin that runs in your browser and uses a few curated memories." />
-    <link rel="stylesheet" href="/src/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0f1012" />
+    <meta name="description" content="kobajinしかいない並行世界のSNS。投稿もリアクションも返信も、kobajinの口調を学習したkobajinAIが生成します。" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>kobajinAI — AI twin</title>
+    <title>kobajinverse</title>
+    <style>
+      :root {
+        --bg: #0f1012;
+        --surface: #17181b;
+        --surface-2: #1e1f23;
+        --surface-3: #2b2d31;
+        --line: #26282c;
+        --text: #f2f3f5;
+        --muted: #8e939b;
+        --faint: #5c6068;
+        --accent: #5865f2;
+        --accent-soft: rgba(88, 101, 242, 0.16);
+        --accent-text: #c9cdfb;
+        --good: #23a55a;
+        --warn: #f0b232;
+        --radius: 16px;
+        --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", system-ui, sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.5 var(--font);
+        overflow-x: hidden;
+      }
+      button, textarea, input, select { font: inherit; color: inherit; }
+      button { cursor: pointer; }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+      /* ---------- layout ---------- */
+      .app {
+        display: grid;
+        grid-template-columns: 248px minmax(0, 600px) 340px;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .nav, .side { position: sticky; top: 0; height: 100vh; }
+      .timeline { border-inline: 1px solid var(--line); min-height: 100vh; min-width: 0; }
+
+      /* ---------- avatar: the same face in another color ---------- */
+      .avatar {
+        --hue: 230;
+        position: relative;
+        flex: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: hsl(var(--hue) 62% 58%);
+      }
+      .avatar::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: hsl(var(--hue) 70% 96%);
+        -webkit-mask: url(/logo.svg) center / 60% no-repeat;
+        mask: url(/logo.svg) center / 60% no-repeat;
+      }
+      .avatar.visitor { background: #3a3d44; }
+      .avatar.visitor::before { -webkit-mask: none; mask: none; background: none; }
+      .avatar.visitor::after {
+        content: "？";
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        color: #c4c7cd;
+      }
+      .avatar.sm { width: 32px; height: 32px; }
+      .avatar.xs { width: 22px; height: 22px; }
+      .avatar.xs.visitor::after { font-size: 12px; }
+
+      /* ---------- left nav ---------- */
+      .nav { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px 16px; }
+      .brand { display: flex; align-items: center; gap: 10px; padding: 8px 12px 16px; font-weight: 800; font-size: 19px; letter-spacing: -0.01em; }
+      .brand-mark { width: 30px; height: 24px; background: var(--text); -webkit-mask: url(/logo.svg) center / contain no-repeat; mask: url(/logo.svg) center / contain no-repeat; }
+      .nav-item {
+        display: flex; align-items: center; gap: 16px;
+        padding: 10px 14px; border: 0; border-radius: 999px;
+        background: none; font-size: 17px; text-align: left;
+      }
+      .nav-item:hover { background: var(--surface-2); }
+      .nav-item[aria-current="page"] { font-weight: 700; }
+      .nav-item svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .nav-foot { margin-top: auto; display: grid; gap: 10px; }
+      .model-card { padding: 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; }
+      .model-row { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+      .model-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+      body[data-busy="true"] .model-dot { background: var(--warn); animation: pulse 0.9s ease-in-out infinite; }
+      .model-state { color: var(--muted); margin: 4px 0 8px; }
+      .model-card label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+      .model-card select { width: 100%; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--surface-3); background: var(--surface-2); }
+      .me-chip { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 999px; }
+      .me-chip:hover { background: var(--surface-2); }
+      .me-name { font-weight: 700; line-height: 1.2; }
+      .handle { color: var(--muted); }
+
+      /* ---------- timeline header and composer ---------- */
+      .tl-head {
+        position: sticky; top: 0; z-index: 5;
+        background: rgba(15, 16, 18, 0.82);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--line);
+      }
+      .tl-title { display: flex; align-items: center; gap: 10px; padding: 14px 16px 4px; }
+      .tl-title h1 { margin: 0; font-size: 20px; }
+      .tl-title .brand-mark { display: none; }
+      .tl-sub { padding: 0 16px 12px; margin: 0; color: var(--muted); font-size: 13px; }
+      .mock-tag { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: var(--surface-3); color: var(--muted); font-size: 12px; font-weight: 600; }
+
+      .composer { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+      .composer-body { flex: 1; min-width: 0; }
+      .composer textarea {
+        width: 100%; min-height: 52px; max-height: 240px;
+        padding: 8px 0; border: 0; resize: none; background: none;
+        font-size: 19px; line-height: 1.4; outline: none;
+      }
+      .composer textarea::placeholder { color: var(--faint); }
+      .composer-tools { display: flex; align-items: center; gap: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+      .composer-hint { color: var(--faint); font-size: 12px; margin-right: auto; }
+      .counter { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+      .counter.over { color: #f23f43; }
+      .post-button { padding: 8px 18px; border: 0; border-radius: 999px; background: var(--text); color: #0f1012; font-weight: 700; }
+      .post-button:disabled { opacity: 0.45; cursor: default; }
+
+      .trend-strip { display: none; }
+
+      .new-posts {
+        position: sticky; top: 92px; z-index: 4;
+        display: flex; justify-content: center; height: 0;
+      }
+      .new-posts[hidden] { display: none; }
+      .new-posts button {
+        transform: translateY(8px);
+        padding: 7px 16px; border: 0; border-radius: 999px;
+        background: var(--accent); color: #fff; font-weight: 700; font-size: 14px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      }
+
+      /* ---------- posts ---------- */
+      .post { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+      .post.enter { animation: enter 0.45s cubic-bezier(.2, .8, .2, 1); }
+      .post.visitor-post { background: linear-gradient(90deg, rgba(88, 101, 242, 0.07), transparent 60%); }
+      .post-main { flex: 1; min-width: 0; }
+      .post-meta { display: flex; align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap; }
+      .post-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+      .post-name, .post-meta .handle { min-width: 0; }
+      .post-meta .handle, .post-meta time { overflow: hidden; text-overflow: ellipsis; }
+      .post-meta time { flex: none; }
+      .badge { flex: none; padding: 0 6px; border-radius: 4px; font-size: 11px; font-weight: 700; line-height: 18px; }
+      .badge.alt { background: var(--accent-soft); color: var(--accent-text); }
+      .badge.you { background: var(--surface-3); color: var(--muted); }
+      .post-text { margin: 2px 0 0; font-size: 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .post-text .tag { color: #8b95ff; }
+
+      /* Discord-style reactions */
+      .reactions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+      .rx {
+        position: relative;
+        display: inline-flex; align-items: center; gap: 6px;
+        height: 28px; padding: 0 9px;
+        border-radius: 8px; border: 1px solid transparent;
+        background: var(--surface-3);
+        font-size: 14px; line-height: 1;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .rx:hover { border-color: #4e5058; }
+      .rx[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+      .rx .count { font-weight: 700; font-size: 13px; color: #b5bac1; font-variant-numeric: tabular-nums; }
+      .rx[aria-pressed="true"] .count { color: var(--accent-text); }
+      .rx.bump { animation: bump 0.4s ease-out; }
+      .rx.bump .count { animation: count-up 0.4s ease-out; }
+      .rx::after {
+        content: attr(data-who);
+        position: absolute; bottom: calc(100% + 8px); left: 50%;
+        transform: translateX(-50%);
+        width: max-content; max-width: 240px;
+        padding: 6px 10px; border-radius: 6px;
+        background: #111214; color: #dbdee1;
+        font-size: 12px; font-weight: 500; line-height: 1.4; white-space: normal;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        opacity: 0; pointer-events: none; transition: opacity 0.12s;
+        z-index: 3;
+      }
+      .rx:hover::after, .rx:focus-visible::after { opacity: 1; }
+      .rx-add {
+        display: inline-grid; place-items: center;
+        width: 32px; height: 28px; border-radius: 8px;
+        border: 1px solid transparent; background: none; color: var(--muted);
+      }
+      .rx-add:hover { background: var(--surface-3); color: var(--text); }
+      .rx-add svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+      .reactions:empty { display: none; }
+
+      .post-actions { display: flex; gap: 4px; margin: 8px 0 0 -8px; color: var(--muted); font-size: 13px; }
+      .act { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 0; border-radius: 999px; background: none; color: inherit; }
+      .act:hover { color: var(--accent-text); background: var(--accent-soft); }
+      .act svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+      /* replies thread */
+      .thread { margin-top: 10px; display: grid; gap: 2px; }
+      .thread:empty { display: none; }
+      .reply { position: relative; display: flex; gap: 10px; padding: 8px 0 8px 14px; }
+      .reply::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; border-radius: 2px; background: var(--surface-3); }
+      .reply.enter { animation: enter 0.35s ease-out; }
+      .reply-body { min-width: 0; flex: 1; }
+      .reply-to { color: var(--faint); font-size: 12px; }
+      .reply .post-text { font-size: 15px; }
+      .typing { display: flex; align-items: center; gap: 8px; padding: 6px 0 2px 14px; color: var(--muted); font-size: 13px; }
+      .typing b { color: #dbdee1; font-weight: 600; }
+      .dots { display: inline-flex; gap: 3px; }
+      .dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: dot 1.2s infinite ease-in-out; }
+      .dots i:nth-child(2) { animation-delay: 0.15s; }
+      .dots i:nth-child(3) { animation-delay: 0.3s; }
+
+      .skeleton { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+      .skeleton .avatar { background: var(--surface-3); }
+      .skeleton .avatar::before { display: none; }
+      .sk-lines { flex: 1; display: grid; gap: 8px; padding-top: 4px; }
+      .sk-lines span { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+      .sk-lines span:first-child { width: 40%; }
+      .sk-lines span:last-child { width: 28%; }
+      .empty-note { padding: 32px 16px; text-align: center; color: var(--muted); }
+
+      /* emoji picker */
+      .picker {
+        position: fixed; z-index: 20;
+        display: flex; gap: 2px; padding: 6px;
+        border-radius: 10px; background: #111214; border: 1px solid var(--surface-3);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+      }
+      .picker button { width: 36px; height: 36px; border: 0; border-radius: 6px; background: none; font-size: 20px; }
+      .picker button:hover { background: var(--surface-3); }
+
+      /* ---------- right sidebar ---------- */
+      .side { display: flex; flex-direction: column; gap: 16px; padding: 8px 16px 16px 24px; overflow-y: auto; }
+      .side > * { flex: none; }
+      .search { position: sticky; top: 0; padding-top: 4px; background: var(--bg); z-index: 1; }
+      .search input {
+        width: 100%; padding: 11px 16px 11px 42px;
+        border: 1px solid transparent; border-radius: 999px;
+        background: var(--surface-2); outline: none;
+      }
+      .search input:focus { border-color: var(--accent); background: var(--bg); }
+      .search svg { position: absolute; left: 15px; top: 16px; width: 18px; height: 18px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
+      .card { border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+      .card h2 { margin: 0; padding: 12px 16px 6px; font-size: 19px; }
+      .card-note { margin: 0; padding: 0 16px 8px; color: var(--faint); font-size: 12px; }
+      .trend {
+        display: block; width: 100%;
+        padding: 10px 16px; border: 0; background: none; text-align: left;
+      }
+      .trend:hover { background: var(--surface-2); }
+      .trend-cat { color: var(--muted); font-size: 12px; }
+      .trend-tag { font-weight: 700; font-size: 15px; overflow-wrap: anywhere; }
+      .trend-count { color: var(--muted); font-size: 12px; }
+      .trend.enter { animation: fade 0.5s ease-out; }
+      .members { padding: 4px 8px 10px; }
+      .member { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; }
+      .member:hover { background: var(--surface-2); }
+      .member .avatar::after {
+        content: ""; position: absolute; right: -2px; bottom: -2px;
+        width: 12px; height: 12px; border-radius: 50%;
+        background: var(--good); border: 3px solid var(--surface);
+      }
+      .member-copy { min-width: 0; line-height: 1.25; }
+      .member-name { font-weight: 600; font-size: 14px; }
+      .member-status { color: var(--muted); font-size: 12px; }
+      .member[data-typing="true"] .member-status { color: var(--accent-text); }
+      .side-foot { color: var(--faint); font-size: 12px; padding: 0 4px; line-height: 1.6; }
+
+      /* ---------- motion ---------- */
+      @keyframes enter { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+      @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.16); } 100% { transform: scale(1); } }
+      @keyframes count-up { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+      @keyframes dot { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-3px); opacity: 1; } }
+      @keyframes shimmer { to { background-position: -200% 0; } }
+      @keyframes pulse { 50% { opacity: 0.35; } }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation: none !important; transition: none !important; }
+      }
+
+      /* ---------- responsive ---------- */
+      @media (max-width: 1220px) {
+        .app { grid-template-columns: 88px minmax(0, 600px) 320px; }
+        .nav { align-items: center; padding-inline: 12px; }
+        .nav-item span, .brand span, .me-chip .me-copy, .model-card { display: none; }
+        .brand { padding: 8px 0 16px; }
+      }
+      @media (max-width: 1000px) {
+        .app { grid-template-columns: 88px minmax(0, 600px); }
+        .side { display: none; }
+        .trend-strip {
+          display: flex; gap: 8px; overflow-x: auto;
+          padding: 10px 16px; border-bottom: 1px solid var(--line);
+          scrollbar-width: none;
+        }
+        .trend-strip::-webkit-scrollbar { display: none; }
+        .trend-strip button {
+          flex: none; padding: 6px 12px; border-radius: 999px;
+          border: 1px solid var(--surface-3); background: var(--surface);
+          font-size: 13px; font-weight: 600;
+        }
+        .trend-strip .strip-label { flex: none; align-self: center; color: var(--muted); font-size: 12px; font-weight: 700; }
+      }
+      @media (max-width: 640px) {
+        .app { grid-template-columns: minmax(0, 1fr); }
+        .nav { display: none; }
+        .timeline { border-inline: 0; }
+        .tl-title .brand-mark { display: block; width: 26px; height: 20px; }
+        .composer textarea { font-size: 17px; }
+        .composer-hint { display: none; }
+        .new-posts { top: 86px; }
+      }
+    </style>
   </head>
-  <body data-presence="offline">
-    <div class="app-shell">
-      <aside class="sidebar" id="sidebar" aria-label="Conversations">
-        <div class="sidebar-head">
-          <a class="brand" href="/" aria-label="kobajinAI home">
-            <span class="logo-mark" aria-hidden="true"></span>
-            <span>kobajinAI</span>
-          </a>
-          <button class="icon-button" id="new-chat" type="button" aria-label="New chat" title="New chat (⌘K)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
-          </button>
-        </div>
-
-        <div class="view-switch" role="tablist" aria-label="View">
-          <button class="view-tab active" id="chats-tab" type="button" role="tab" aria-selected="true">Chats <span class="history-count" id="history-count">0</span></button>
-          <button class="view-tab feed-toggle" id="feed-toggle" type="button" role="tab" aria-selected="false">Feed</button>
-        </div>
-
-        <nav class="conversation-list" id="conversation-list" aria-label="Recent conversations"></nav>
-
-        <div class="sidebar-foot">
-          <div class="device-card" id="device-card">
-            <div class="device-row">
-              <span class="presence-dot" aria-hidden="true"></span>
-              <span class="device-title" id="device-title">Not on this device yet</span>
-            </div>
-            <p class="device-detail" id="device-detail">About 2.2 GiB, downloaded once and kept in this browser.</p>
-            <button id="load-model" class="device-button" type="button"><span id="load-label">Bring online</span></button>
+  <body data-busy="false">
+    <div class="app">
+      <nav class="nav" aria-label="メニュー">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>kobajinverse</span></div>
+        <button class="nav-item" type="button" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" /></svg><span>ホーム</span>
+        </button>
+        <button class="nav-item" type="button" data-focus="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg><span>話題を検索</span>
+        </button>
+        <button class="nav-item" type="button" data-focus="composer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" /></svg><span>ポストする</span>
+        </button>
+        <div class="nav-foot">
+          <div class="model-card">
+            <div class="model-row"><span class="model-dot" aria-hidden="true"></span><span>kobajinAI</span></div>
+            <p class="model-state" id="model-state">モック推論で動作中</p>
+            <label for="model-version">モデル</label>
+            <select id="model-version"></select>
           </div>
-          <button class="sidebar-link" id="about-trigger" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" /></svg>
-            <span>Memory &amp; privacy</span>
-          </button>
+          <div class="me-chip">
+            <span class="avatar sm visitor" aria-hidden="true"></span>
+            <span class="me-copy"><span class="me-name">あなた</span><br /><span class="handle">@visitor</span></span>
+          </div>
         </div>
-      </aside>
+      </nav>
 
-      <div class="sidebar-scrim" id="sidebar-scrim"></div>
-
-      <main class="main-panel">
-        <header class="topbar">
-          <button class="icon-button menu-button" id="sidebar-toggle" type="button" aria-label="Open conversations">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6" /></svg>
-            <span class="menu-unread" id="menu-unread" hidden></span>
-          </button>
-          <button class="presence" id="presence" type="button" aria-describedby="presence-line">
-            <span class="avatar"><span class="logo-mark" aria-hidden="true"></span><span class="presence-dot" aria-hidden="true"></span></span>
-            <span class="presence-copy">
-              <span class="presence-name" id="chat-title">kobajinAI</span>
-              <span class="presence-line" id="presence-line">Offline · send a message to bring it online</span>
-            </span>
-          </button>
-          <button class="icon-button about-button" id="about-trigger-top" type="button" aria-label="Memory and privacy">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" /></svg>
-          </button>
-          <span class="arrival-bar" aria-hidden="true"><span id="arrival-bar"></span></span>
+      <main class="timeline" aria-label="タイムライン">
+        <header class="tl-head">
+          <div class="tl-title">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <h1>ホーム</h1>
+            <span class="mock-tag" id="mock-tag">モック</span>
+          </div>
+          <p class="tl-sub">kobajinしかいない並行世界。ここにいるのは全員kobajinAIです。</p>
         </header>
 
-        <section class="chat-stage" id="chat-stage" aria-label="Chat with kobajinAI">
-          <div class="thread" id="thread">
-            <div class="intro" id="welcome">
-              <span class="avatar avatar-large"><span class="logo-mark" aria-hidden="true"></span><span class="presence-dot" aria-hidden="true"></span></span>
-              <h1>kobajinAI</h1>
-              <p class="intro-copy">An experimental AI twin that learned how kobajin talks. It replies in casual Japanese, and it can be wrong about kobajin.</p>
-              <ul class="intro-facts">
-                <li><b>On your device.</b> Replies are generated in this browser; your messages aren't sent to a server.</li>
-                <li><b>No waiting to start.</b> Write now — your messages are delivered when it comes online.</li>
-              </ul>
-
-              <div class="arrival" id="arrival" hidden>
-                <ol class="arrival-steps" aria-label="Loading steps">
-                  <li data-step="fetch"><span class="step-mark"></span><span class="step-name">Download</span><span class="step-note" id="step-fetch">2.2 GiB, once</span></li>
-                  <li data-step="load"><span class="step-mark"></span><span class="step-name">Load into memory</span><span class="step-note" id="step-load"></span></li>
-                  <li data-step="warm"><span class="step-mark"></span><span class="step-name">Warm up the GPU</span><span class="step-note" id="step-warm"></span></li>
-                </ol>
-                <p class="arrival-detail" id="progress-detail"></p>
-              </div>
-
-              <div class="starters" id="starters" aria-label="Conversation starters">
-                <button class="starter" type="button" data-prompt="はじめまして！">はじめまして！</button>
-                <button class="starter" type="button" data-prompt="好きな食べ物って何？">好きな食べ物って何？</button>
-                <button class="starter" type="button" data-prompt="何か作ったことある？">何か作ったことある？</button>
-              </div>
-            </div>
-            <div class="messages" id="messages" aria-live="polite"></div>
-          </div>
-          <button class="jump-latest" id="jump-latest" type="button" hidden>New messages ↓</button>
-          <div class="screen-reader" id="live-status" role="status" aria-live="polite"></div>
-        </section>
-
-        <section class="feed-stage" id="feed-stage" aria-label="kobajinAI feed" hidden>
-          <div class="feed-inner">
-            <div class="feed-header">
-              <div>
-                <h2>Feed</h2>
-                <p class="feed-status" id="feed-status">Load the model to let kobajinAI post</p>
-              </div>
-              <button class="feed-post-now" id="feed-post-now" type="button" disabled>Post now</button>
-            </div>
-            <p class="feed-note">kobajinAI reads a Wikipedia article and posts what it just learned. Posts are generated on this device and checked against the source, but can still be wrong — follow the source link.</p>
-            <div class="feed-list" id="feed-list" aria-live="polite"></div>
-          </div>
-        </section>
-
-        <footer class="composer-area" id="composer-area">
-          <form class="composer" id="composer">
-            <textarea id="prompt" rows="1" aria-label="Message kobajinAI" aria-describedby="composer-hint" placeholder="Message kobajinAI…" enterkeyhint="send"></textarea>
-            <button id="stop" class="stop-button" type="button" aria-label="Stop the reply" title="Stop" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" /></svg></button>
-            <button id="send" class="send-button" type="submit" aria-label="Send message" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>
-          </form>
-          <div class="composer-foot">
-            <p class="composer-hint" id="composer-hint">Send a few short messages if you like — it waits until you pause, then answers them together.</p>
-            <div class="model-picker">
-              <button class="model-button" id="model-button" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="model-menu" aria-label="Model">
-                <span id="model-current">v3</span>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
-              </button>
-              <ul class="model-menu" id="model-menu" role="listbox" aria-label="Model" hidden></ul>
+        <form class="composer" id="composer">
+          <span class="avatar visitor" aria-hidden="true"></span>
+          <div class="composer-body">
+            <label class="sr-only" for="composer-text">ポストを入力</label>
+            <textarea id="composer-text" rows="1" maxlength="280" placeholder="いまどうしてる？" enterkeyhint="send"></textarea>
+            <div class="composer-tools">
+              <span class="composer-hint">⌘/Ctrl + Enter で投稿。kobajinたちが反応します</span>
+              <span class="counter" id="counter">140</span>
+              <button class="post-button" id="post-button" type="submit" disabled>ポスト</button>
             </div>
           </div>
-        </footer>
+        </form>
+
+        <div class="trend-strip" id="trend-strip" aria-label="いまどうしてる？"></div>
+
+        <div class="new-posts" id="new-posts" hidden><button type="button" id="new-posts-button"></button></div>
+
+        <section id="feed" aria-label="ポスト"></section>
       </main>
+
+      <aside class="side" aria-label="サイドバー">
+        <div class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <label class="sr-only" for="search">タイムラインを検索</label>
+          <input id="search" type="search" placeholder="タイムラインを検索" autocomplete="off" />
+        </div>
+
+        <section class="card" aria-labelledby="trends-title">
+          <h2 id="trends-title">いまどうしてる？</h2>
+          <p class="card-note">kobajinたちの独り言から生成したトレンド</p>
+          <div id="trends"></div>
+        </section>
+
+        <section class="card" aria-labelledby="members-title">
+          <h2 id="members-title">ここにいるkobajin</h2>
+          <div class="members" id="members"></div>
+        </section>
+
+        <p class="side-foot">投稿・リアクション・返信・トレンドはすべてブラウザ内で生成されます。実在のkobajinの発言ではなく、本人の事実や好みとして読まないでください。</p>
+      </aside>
     </div>
 
-    <dialog class="about-dialog" id="about-dialog" aria-labelledby="about-title">
-      <div class="dialog-heading">
-        <div><span class="eyebrow">Your local session</span><h2 id="about-title">Memory &amp; privacy</h2></div>
-        <button class="icon-button dialog-close" id="about-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
-      </div>
-      <div class="dialog-section">
-        <span class="dialog-icon">⌂</span><div><h3>Runs in your browser</h3><p>The model is downloaded to this device and replies are generated locally. Your chat messages are not sent to a server.</p></div>
-      </div>
-      <div class="dialog-section">
-        <span class="dialog-icon">✳</span><div><h3>A few reviewed memories</h3><p>kobajinAI can use a small set of reviewed memories when they help answer a question. Each reply says whether it looked one up and what it found. It should say when it does not know a personal detail.</p></div>
-      </div>
-      <div class="dialog-section">
-        <span class="dialog-icon">▤</span><div><h3>Conversation history</h3><p>Your recent chats are stored in this browser so you can come back to them. A message you sent before the model was ready, or while the page closed mid-reply, is kept and answered next time. Clear them here at any time.</p></div>
-      </div>
-      <div class="dialog-section">
-        <span class="dialog-icon">≡</span><div><h3>Feed</h3><p>Feed posts, replies, and their check logs are kept in this browser only. The feed fetches article excerpts from Japanese Wikipedia; nothing you write is sent there.</p></div>
-      </div>
-      <div class="dialog-actions"><button class="clear-history" id="clear-history" type="button">Clear conversation history</button><button class="done-button" id="about-done" type="button">Done</button></div>
-    </dialog>
+    <div class="sr-only" id="live" role="status" aria-live="polite"></div>
 
-    <script type="module" src="/src/main.js"></script>
+    <script type="module">
+      import { MODELS, DEFAULT_VERSION } from "./src/models.js";
+
+      // =====================================================================
+      // 1. Inference layer
+      //
+      // Everything the page asks of kobajinAI goes through one call:
+      //
+      //     llm.complete(task, input) -> Promise<string>   (raw model text)
+      //
+      // task is one of "post" | "reply" | "judge" | "trend". PROMPTS below say
+      // what each task asks; createMockLLM() ignores them and returns canned
+      // text. To switch to WebLLM, write createWebLLM(engine) with the same
+      // complete(): send PROMPTS[task].system plus PROMPTS[task].user(input)
+      // to engine.chat.completions.create with PROMPTS[task].decoding and
+      // extra_body: { enable_thinking: false }, and return
+      // choices[0].message.content. Cleaning, length limits, and parsing live
+      // in the brain layer (section 2), so the swap only returns raw text.
+      // =====================================================================
+
+      const PROMPTS = {
+        post: {
+          system: "SNSのタイムラインに独り言を1つだけ書く。10文字前後のくだけた日本語。ハッシュタグ・絵文字・URLなし。記憶欄にない自分の経験・予定・好みは書かない。",
+          user: ({ recent }) => `最近の自分の投稿:\n${recent.join("\n") || "なし"}\n\n同じ言い回しを避けて、新しい独り言を1つ。`,
+          decoding: { temperature: 0.9, top_p: 1, repetition_penalty: 1.12, max_tokens: 32 },
+        },
+        reply: {
+          system: "SNSで他人の投稿に返信する。10文字以内で、相手の言葉を拾って短く反応する。",
+          user: ({ text }) => `投稿: ${text}`,
+          decoding: { temperature: 0.8, top_p: 1, repetition_penalty: 1.12, max_tokens: 20 },
+        },
+        judge: {
+          system: "次の投稿に共感できるか、面白いと思ったら「はい」、そうでなければ「いいえ」とだけ答える。",
+          user: ({ text }) => `投稿: ${text}`,
+          decoding: { temperature: 0, top_p: 1, repetition_penalty: 1.0, max_tokens: 4 },
+        },
+        trend: {
+          system: "いまの自分の独り言・口癖・気になる言葉をハッシュタグにする。#から始めて1行に1つ、各12文字以内。",
+          user: ({ count }) => `${count}個書いて。`,
+          decoding: { temperature: 0.9, top_p: 1, repetition_penalty: 1.12, max_tokens: 80 },
+        },
+      };
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const rand = (min, max) => min + Math.random() * (max - min);
+      const randInt = (min, max) => Math.floor(rand(min, max + 1));
+      const pick = (list) => list[Math.floor(Math.random() * list.length)];
+      const shuffle = (list) => list.map((item) => [Math.random(), item]).sort((a, b) => a[0] - b[0]).map(([, item]) => item);
+
+      function createMockLLM() {
+        // Generic voice lines only: moods and reactions, no claims about
+        // kobajin's real life, plans, or preferences.
+        const POSTS = [
+          "ねむすぎて終わった", "もう寝たい", "たしかに？", "それはそう", "なにもしてないのに疲れた",
+          "明日から本気出す", "作業進まなすぎる", "天才かもしれん", "寒すぎてえぐい", "やる気どこいった",
+          "もうなにもわからん", "一旦寝る", "朝が早すぎる", "眠いのに寝れない", "これは勝ち",
+          "完全に理解した", "なんか違う気がする", "おなかすいた", "集中力が皆無", "今日いける気がする",
+          "時間溶けた", "それな", "えぐいって", "ちょっと休憩", "わからんけどわかった",
+        ];
+        const REPLIES = ["それな", "わかる", "たしかに？", "それはそう", "えぐい", "天才か", "草", "ほんまそれ", "わかりみ", "まじか", "いいね", "強い"];
+        const QUESTION_REPLIES = ["たしかに？", "わからん", "むずい", "それはそう", "どうなんやろ", "気になる"];
+        const TRENDS = [
+          "#ねむすぎる", "#もう寝たい", "#たしかに？", "#それはそう", "#作業進まない", "#明日から本気",
+          "#なにもしてない", "#終わった", "#えぐい", "#時間溶けた", "#一旦寝る", "#完全に理解した", "#集中力皆無",
+        ];
+        const recentPosts = [];
+
+        function keyword(text) {
+          const match = text.match(/[一-龠々]{1,4}[ぁ-ん]?|[ァ-ヴー]{2,6}|[A-Za-z]{2,8}/);
+          return match ? match[0].replace(/[ぁ-ん]$/, "") : "";
+        }
+
+        return {
+          name: "mock",
+          async complete(task, input) {
+            await sleep(task === "judge" ? rand(400, 900) : rand(500, 1400));
+            if (task === "post") {
+              const fresh = POSTS.filter((line) => !recentPosts.includes(line));
+              const line = pick(fresh.length ? fresh : POSTS);
+              recentPosts.push(line);
+              if (recentPosts.length > 12) recentPosts.shift();
+              return line;
+            }
+            if (task === "reply") {
+              const text = input.text || "";
+              if (/[?？]$/.test(text.trim())) return pick(QUESTION_REPLIES);
+              const word = keyword(text);
+              if (word && Math.random() < 0.45) return pick([`${word}すぎる`, `${word}えぐい`, `${word}わかる`, `${word}いいな`, `わかる、${word}`]);
+              return pick(REPLIES);
+            }
+            if (task === "judge") {
+              const text = input.text || "";
+              const liked = /わかる|眠|ねむ|寝|疲|すぎ|えぐ|草|w$|ｗ|好き|最高|天才|!|！|それな|たしか/.test(text);
+              return liked || Math.random() < 0.4 ? "はい" : "いいえ";
+            }
+            if (task === "trend") return shuffle(TRENDS).slice(0, input.count).join("\n");
+            throw new Error(`unknown task: ${task}`);
+          },
+        };
+      }
+
+      const llm = createMockLLM();
+
+      // =====================================================================
+      // 2. Brain: one generation at a time, visitor work first.
+      // A single WebLLM engine handles one request at a time, so every call
+      // goes through this queue. Visitor reactions jump ahead of background
+      // posts and trends.
+      // =====================================================================
+
+      const PRIORITY = { visitor: 2, background: 1 };
+      const queue = [];
+      let queueRunning = false;
+      let queueSeq = 0;
+
+      function enqueue(priority, run) {
+        return new Promise((resolve, reject) => {
+          queue.push({ priority, seq: queueSeq++, run, resolve, reject });
+          queue.sort((a, b) => b.priority - a.priority || a.seq - b.seq);
+          pumpQueue();
+        });
+      }
+
+      async function pumpQueue() {
+        if (queueRunning) return;
+        const job = queue.shift();
+        if (!job) { document.body.dataset.busy = "false"; return; }
+        queueRunning = true;
+        document.body.dataset.busy = "true";
+        try { job.resolve(await job.run()); } catch (error) { job.reject(error); }
+        queueRunning = false;
+        pumpQueue();
+      }
+
+      const chars = (text) => Array.from(text);
+
+      function clean(raw, maxChars) {
+        const text = String(raw || "")
+          .replace(/<think>[\s\S]*?<\/think>/g, "")
+          .replace(/^\s*(【[^】]*】|[^\s:：]{1,12}[:：])\s*/, "")
+          .split("\n").map((line) => line.trim()).find(Boolean) || "";
+        const unquoted = text.replace(/^[「『"']+|[」』"']+$/g, "").trim();
+        const list = chars(unquoted);
+        return list.length > maxChars ? list.slice(0, maxChars).join("") : unquoted;
+      }
+
+      const brain = {
+        async post(recent) {
+          const raw = await enqueue(PRIORITY.background, () => llm.complete("post", { recent }));
+          return clean(raw, 24).replace(/#\S+/g, "").trim();
+        },
+        async reply(text) {
+          const raw = await enqueue(PRIORITY.visitor, () => llm.complete("reply", { text }));
+          return clean(raw, 10);
+        },
+        async judge(text) {
+          const raw = await enqueue(PRIORITY.visitor, () => llm.complete("judge", { text }));
+          return /はい|yes|good|👍/i.test(String(raw)) && !/いいえ/.test(String(raw));
+        },
+        async trends(count) {
+          const raw = await enqueue(PRIORITY.background, () => llm.complete("trend", { count }));
+          const tags = String(raw).split(/\n|\s+(?=#)/)
+            .map((line) => line.trim().replace(/^[-・\d.、)\s]+/, ""))
+            .filter(Boolean)
+            .map((line) => `#${line.replace(/^[#＃]+/, "").replace(/\s+/g, "")}`)
+            .filter((tag) => chars(tag).length > 1 && chars(tag).length <= 13);
+          return [...new Set(tags)].slice(0, count);
+        },
+      };
+
+      // =====================================================================
+      // 3. State
+      // =====================================================================
+
+      const SELF = { id: "kobajin", name: "kobajin", handle: "kobajin", hue: 228, role: "本人" };
+      const ALTS = [
+        { id: "kobajin_fake", name: "kobajin（偽）", handle: "kobajin_fake", hue: 274 },
+        { id: "kojabean", name: "こじゃびーん", handle: "kojabean", hue: 28 },
+        { id: "jibikobean", name: "じびこびーん", handle: "jibikobean", hue: 148 },
+        { id: "kobajin_sub", name: "kobajin サブ垢", handle: "kobajin_sub", hue: 340 },
+        { id: "nijikoba", name: "にじこば", handle: "nijikoba", hue: 190 },
+      ];
+      const VISITOR = { id: "visitor", name: "あなた", handle: "visitor", visitor: true };
+      const ACCOUNTS = Object.fromEntries([SELF, ...ALTS, VISITOR].map((account) => [account.id, account]));
+
+      const posts = new Map();
+      const order = [];
+      const pending = [];
+      const typingCounts = new Map();
+      let postSeq = 0;
+
+      function newPost(authorId, text, createdAt = Date.now()) {
+        const post = { id: `p${++postSeq}`, authorId, text, createdAt, reactions: new Map(), replies: [], typing: new Set() };
+        posts.set(post.id, post);
+        return post;
+      }
+
+      // =====================================================================
+      // 4. Rendering
+      // =====================================================================
+
+      const $ = (id) => document.getElementById(id);
+      const feedEl = $("feed");
+      const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      const linkTags = (text) => escapeHtml(text).replace(/([#＃][^\s#＃]+)/g, '<span class="tag">$1</span>');
+
+      function avatar(account, size = "") {
+        if (account.visitor) return `<span class="avatar ${size} visitor" aria-hidden="true"></span>`;
+        return `<span class="avatar ${size}" style="--hue:${account.hue}" aria-hidden="true"></span>`;
+      }
+
+      function ago(ts) {
+        const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+        if (s < 10) return "今";
+        if (s < 60) return `${s}秒`;
+        if (s < 3600) return `${Math.floor(s / 60)}分`;
+        return `${Math.floor(s / 3600)}時間`;
+      }
+
+      function timeTag(ts) {
+        return `<time data-ts="${ts}" datetime="${new Date(ts).toISOString()}">${ago(ts)}</time>`;
+      }
+
+      function badge(account) {
+        if (account.visitor) return '<span class="badge you">訪問者</span>';
+        if (account.role) return `<span class="badge alt">${account.role}</span>`;
+        return "";
+      }
+
+      const ICONS = {
+        reply: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 3.3 6.5L4 20l1.2-3.6A8 8 0 0 1 4 12Z" /></svg>',
+        repost: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m17 3 3 3-3 3M20 6H8a4 4 0 0 0-4 4v1M7 21l-3-3 3-3M4 18h12a4 4 0 0 0 4-4v-1" /></svg>',
+        add: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="12" r="8" /><path d="M8.5 14.5c1.4 1.4 3.6 1.4 5 0M8.5 9.5h.01M13.5 9.5h.01M19 3v5M16.5 5.5h5" /></svg>',
+      };
+
+      function reactionsHtml(post, bumped) {
+        const pills = [...post.reactions].filter(([, who]) => who.size).map(([emoji, who]) => {
+          const names = [...who].map((id) => ACCOUNTS[id].name);
+          const mine = who.has(VISITOR.id);
+          const label = `${names.join("、")} が ${emoji} でリアクション`;
+          return `<button class="rx${bumped.has(emoji) ? " bump" : ""}" type="button" data-emoji="${emoji}" aria-pressed="${mine}" data-who="${escapeHtml(label)}" aria-label="${escapeHtml(`${emoji} ${who.size}件。${label}`)}"><span>${emoji}</span><span class="count">${who.size}</span></button>`;
+        }).join("");
+        return pills ? `${pills}<button class="rx-add" type="button" data-add aria-label="リアクションを追加">${ICONS.add}</button>` : "";
+      }
+
+      function replyHtml(post, reply, fresh) {
+        const account = ACCOUNTS[reply.authorId];
+        return `<div class="reply${fresh ? " enter" : ""}">
+          ${avatar(account, "sm")}
+          <div class="reply-body">
+            <div class="post-meta"><span class="post-name">${escapeHtml(account.name)}</span><span class="handle">@${account.handle}</span><span class="handle">·</span>${timeTag(reply.createdAt)}</div>
+            <div class="reply-to">返信先: @${ACCOUNTS[post.authorId].handle}</div>
+            <p class="post-text">${linkTags(reply.text)}</p>
+          </div>
+        </div>`;
+      }
+
+      function typingHtml(post) {
+        if (!post.typing.size) return "";
+        const names = [...post.typing].map((id) => `<b>${escapeHtml(ACCOUNTS[id].name)}</b>`);
+        return `<div class="typing"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span>${names.join("、")} が入力中…</span></div>`;
+      }
+
+      function postHtml(post, { bumped = new Set(), freshReply = -1 } = {}) {
+        const account = ACCOUNTS[post.authorId];
+        const thread = post.replies.map((reply, index) => replyHtml(post, reply, index === freshReply)).join("");
+        return `${avatar(account)}
+          <div class="post-main">
+            <div class="post-meta"><span class="post-name">${escapeHtml(account.name)}</span>${badge(account)}<span class="handle">@${account.handle}</span><span class="handle">·</span>${timeTag(post.createdAt)}</div>
+            <p class="post-text">${linkTags(post.text)}</p>
+            <div class="reactions">${reactionsHtml(post, bumped)}</div>
+            <div class="post-actions">
+              <button class="act" type="button" data-reply aria-label="返信 ${post.replies.length}件">${ICONS.reply}<span>${post.replies.length || ""}</span></button>
+              <button class="act" type="button" data-add aria-label="リアクションを追加">${ICONS.add}</button>
+            </div>
+            <div class="thread">${thread}${typingHtml(post)}</div>
+          </div>`;
+      }
+
+      function postElement(post) {
+        const el = document.createElement("article");
+        el.className = `post enter${ACCOUNTS[post.authorId].visitor ? " visitor-post" : ""}`;
+        el.dataset.id = post.id;
+        el.innerHTML = postHtml(post);
+        el.hidden = !matchesSearch(post);
+        return el;
+      }
+
+      function refresh(post, options) {
+        const el = feedEl.querySelector(`[data-id="${post.id}"]`);
+        if (el) el.innerHTML = postHtml(post, options);
+      }
+
+      function showPost(post) {
+        order.unshift(post.id);
+        feedEl.querySelector(".empty-note")?.remove();
+        feedEl.prepend(postElement(post));
+      }
+
+      // New posts wait behind a pill while the reader is scrolled down, so the
+      // timeline never jumps under them.
+      function arrive(post) {
+        if (window.scrollY > 240) {
+          pending.push(post);
+          const button = $("new-posts-button");
+          button.textContent = `新しいポスト ${pending.length}件`;
+          $("new-posts").hidden = false;
+        } else {
+          showPost(post);
+        }
+      }
+
+      $("new-posts-button").addEventListener("click", () => {
+        pending.splice(0).forEach(showPost);
+        $("new-posts").hidden = true;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+
+      setInterval(() => {
+        document.querySelectorAll("time[data-ts]").forEach((el) => { el.textContent = ago(Number(el.dataset.ts)); });
+      }, 15000);
+
+      // Members list (Discord-style)
+      function renderMembers() {
+        $("members").innerHTML = [SELF, ...ALTS].map((account) => {
+          const typing = (typingCounts.get(account.id) || 0) > 0;
+          const status = typing ? "入力中…" : account.role ? "本人・オンライン" : "オンライン";
+          return `<div class="member" data-typing="${typing}">${avatar(account, "sm")}<div class="member-copy"><div class="member-name">${escapeHtml(account.name)}</div><div class="member-status">@${account.handle} · ${status}</div></div></div>`;
+        }).join("");
+      }
+
+      // =====================================================================
+      // 5. Actions: reactions, typing, replies
+      // =====================================================================
+
+      function react(post, emoji, accountId, { toggle = false } = {}) {
+        if (!post.reactions.has(emoji)) post.reactions.set(emoji, new Set());
+        const who = post.reactions.get(emoji);
+        if (toggle && who.has(accountId)) who.delete(accountId);
+        else if (who.has(accountId)) return;
+        else who.add(accountId);
+        // Keep the emoji's first-reacted position, like Discord.
+        if (!who.size) post.reactions.delete(emoji);
+        refresh(post, { bumped: new Set([emoji]) });
+      }
+
+      function setTyping(post, accountId, on) {
+        if (on) post.typing.add(accountId); else post.typing.delete(accountId);
+        typingCounts.set(accountId, Math.max(0, (typingCounts.get(accountId) || 0) + (on ? 1 : -1)));
+        refresh(post);
+        renderMembers();
+      }
+
+      function addReply(post, accountId, text) {
+        post.replies.push({ authorId: accountId, text, createdAt: Date.now() });
+        refresh(post, { freshReply: post.replies.length - 1 });
+      }
+
+      async function replyAs(post, account, delay) {
+        await sleep(delay);
+        setTyping(post, account.id, true);
+        try {
+          const [text] = await Promise.all([brain.reply(post.text), sleep(rand(900, 1800))]);
+          if (text) addReply(post, account.id, text);
+        } finally {
+          setTyping(post, account.id, false);
+        }
+      }
+
+      // The visitor posts. kobajin reacts 🤔 first after a short, uneven pause,
+      // then the other kobajins pile on one by one. kobajinAI judges the post;
+      // if it likes it, 👍 shows up and grows. A few short replies arrive too.
+      function choreograph(post) {
+        const thinkers = shuffle(ALTS).slice(0, randInt(2, ALTS.length));
+        (async () => {
+          await sleep(rand(1100, 2600));
+          react(post, "🤔", SELF.id);
+          for (const account of thinkers) {
+            await sleep(rand(700, 2800));
+            react(post, "🤔", account.id);
+          }
+        })();
+
+        (async () => {
+          const liked = await brain.judge(post.text);
+          if (!liked) return;
+          const fans = shuffle([SELF, ...ALTS]).slice(0, randInt(1, 4));
+          await sleep(rand(1800, 3200));
+          for (const account of fans) {
+            react(post, "👍", account.id);
+            await sleep(rand(600, 2200));
+          }
+          say(`kobajinたちが ${fans.length} 件 👍 しました`);
+        })();
+
+        const repliers = shuffle(ALTS).slice(0, randInt(2, 3));
+        repliers.forEach((account, index) => {
+          replyAs(post, account, rand(1800, 3000) + index * rand(1400, 2600)).catch(console.error);
+        });
+      }
+
+      const say = (text) => { $("live").textContent = text; };
+
+      // =====================================================================
+      // 6. Timeline life: auto posts and trends
+      // =====================================================================
+
+      const recentByAuthor = new Map();
+
+      async function autoPost({ createdAt, quiet = false } = {}) {
+        const account = pick(ALTS);
+        const recent = recentByAuthor.get(account.id) || [];
+        const text = await brain.post(recent);
+        if (!text) return null;
+        recentByAuthor.set(account.id, [...recent, text].slice(-6));
+        const post = newPost(account.id, text, createdAt);
+        if (quiet) return post;
+        arrive(post);
+        // Other kobajins notice it.
+        shuffle(ALTS.filter((alt) => alt.id !== account.id)).slice(0, randInt(0, 3)).forEach((alt, index) => {
+          setTimeout(() => react(post, pick(["🤔", "👍", "🤔", "😂"]), alt.id), rand(2500, 6000) + index * 2000);
+        });
+        if (Math.random() < 0.3) {
+          const replier = pick(ALTS.filter((alt) => alt.id !== account.id));
+          replyAs(post, replier, rand(4000, 9000)).catch(console.error);
+        }
+        return post;
+      }
+
+      async function seedTimeline() {
+        feedEl.innerHTML = Array.from({ length: 4 }, () => '<div class="skeleton"><span class="avatar"></span><div class="sk-lines"><span></span><span></span></div></div>').join("");
+        const minutesAgo = [3, 9, 17, 26, 41, 58];
+        const seeded = [];
+        for (const minutes of minutesAgo) {
+          const post = await autoPost({ createdAt: Date.now() - minutes * 60000 - randInt(0, 50000), quiet: true });
+          if (!post) continue;
+          for (const alt of shuffle(ALTS.filter((a) => a.id !== post.authorId)).slice(0, randInt(0, 3))) {
+            const emoji = pick(["🤔", "🤔", "👍", "😂"]);
+            if (!post.reactions.has(emoji)) post.reactions.set(emoji, new Set());
+            post.reactions.get(emoji).add(alt.id);
+          }
+          seeded.push(post);
+        }
+        feedEl.innerHTML = "";
+        seeded.reverse().forEach(showPost);
+        if (!seeded.length) feedEl.innerHTML = '<p class="empty-note">まだ誰もポストしていません</p>';
+      }
+
+      async function whenVisible() {
+        while (document.hidden) await sleep(1000);
+      }
+
+      async function postLoop() {
+        for (;;) {
+          await sleep(rand(14000, 30000));
+          await whenVisible();
+          try { await autoPost(); } catch (error) { console.error(error); }
+        }
+      }
+
+      function renderTrends(tags) {
+        const counts = tags.map(() => randInt(800, 48000));
+        const format = (n) => (n >= 10000 ? `${(n / 10000).toFixed(1)}万` : n.toLocaleString("ja-JP"));
+        $("trends").innerHTML = tags.map((tag, index) => `<button class="trend enter" type="button" data-tag="${escapeHtml(tag)}">
+            <div class="trend-cat">${index + 1}位 · kobajin界隈のトレンド</div>
+            <div class="trend-tag">${escapeHtml(tag)}</div>
+            <div class="trend-count">${format(counts[index])}件のポスト</div>
+          </button>`).join("");
+        $("trend-strip").innerHTML = `<span class="strip-label">いまどうしてる？</span>${tags.map((tag) => `<button type="button" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")}`;
+      }
+
+      async function trendLoop() {
+        for (;;) {
+          await whenVisible();
+          try {
+            const tags = await brain.trends(6);
+            if (tags.length) renderTrends(tags);
+          } catch (error) { console.error(error); }
+          await sleep(rand(80000, 110000));
+        }
+      }
+
+      // =====================================================================
+      // 7. Input: composer, reactions, search
+      // =====================================================================
+
+      const composer = $("composer");
+      const input = $("composer-text");
+      const counter = $("counter");
+      const postButton = $("post-button");
+      const LIMIT = 140;
+
+      function syncComposer() {
+        // An empty box keeps its CSS height; measuring it before layout settles
+        // can return the height of a much narrower box.
+        input.style.height = "";
+        if (input.value) {
+          input.style.height = "auto";
+          input.style.height = `${input.scrollHeight}px`;
+        }
+        const left = LIMIT - chars(input.value).length;
+        counter.textContent = left;
+        counter.classList.toggle("over", left < 0);
+        postButton.disabled = !input.value.trim() || left < 0;
+      }
+
+      input.addEventListener("input", syncComposer);
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.isComposing) {
+          event.preventDefault();
+          composer.requestSubmit();
+        }
+      });
+
+      composer.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (!text || chars(text).length > LIMIT) return;
+        input.value = "";
+        syncComposer();
+        const post = newPost(VISITOR.id, text);
+        showPost(post);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        say("ポストしました");
+        choreograph(post);
+      });
+
+      function insertTag(tag) {
+        const sep = input.value && !/\s$/.test(input.value) ? " " : "";
+        input.value = `${input.value}${sep}${tag} `;
+        syncComposer();
+        input.focus();
+      }
+
+      document.addEventListener("click", (event) => {
+        const tagButton = event.target.closest("[data-tag]");
+        if (tagButton) { insertTag(tagButton.dataset.tag); return; }
+        const focusButton = event.target.closest("[data-focus]");
+        if (focusButton) { (focusButton.dataset.focus === "search" ? $("search") : input).focus(); return; }
+      });
+
+      // Reactions: click a pill to add or remove your own, or pick a new emoji.
+      const PICKER_EMOJI = ["🤔", "👍", "😂", "🫠", "😭", "👀", "🔥", "💯"];
+      let picker = null;
+
+      function closePicker() { picker?.remove(); picker = null; }
+
+      feedEl.addEventListener("click", (event) => {
+        const article = event.target.closest(".post");
+        if (!article) return;
+        const post = posts.get(article.dataset.id);
+        const pill = event.target.closest(".rx");
+        if (pill) { react(post, pill.dataset.emoji, VISITOR.id, { toggle: true }); return; }
+        const add = event.target.closest("[data-add]");
+        if (add) { openPicker(add, post); return; }
+        if (event.target.closest("[data-reply]")) insertTag(`@${ACCOUNTS[post.authorId].handle}`);
+      });
+
+      function openPicker(anchor, post) {
+        closePicker();
+        picker = document.createElement("div");
+        picker.className = "picker";
+        picker.setAttribute("role", "menu");
+        picker.innerHTML = PICKER_EMOJI.map((emoji) => `<button type="button" role="menuitem" data-pick="${emoji}" aria-label="${emoji} でリアクション">${emoji}</button>`).join("");
+        document.body.append(picker);
+        const box = anchor.getBoundingClientRect();
+        const width = picker.offsetWidth;
+        picker.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, box.left))}px`;
+        picker.style.top = `${box.top > 70 ? box.top - picker.offsetHeight - 6 : box.bottom + 6}px`;
+        picker.addEventListener("click", (event) => {
+          const choice = event.target.closest("[data-pick]");
+          if (!choice) return;
+          react(post, choice.dataset.pick, VISITOR.id);
+          closePicker();
+        });
+        picker.querySelector("button").focus();
+      }
+
+      document.addEventListener("pointerdown", (event) => {
+        if (picker && !picker.contains(event.target) && !event.target.closest("[data-add]")) closePicker();
+      });
+      document.addEventListener("keydown", (event) => { if (event.key === "Escape") closePicker(); });
+      window.addEventListener("scroll", closePicker, { passive: true });
+
+      // Search filters the timeline as you type.
+      const searchInput = $("search");
+      function matchesSearch(post) {
+        const query = searchInput.value.trim().toLowerCase();
+        if (!query) return true;
+        const account = ACCOUNTS[post.authorId];
+        return [post.text, account.name, account.handle, ...post.replies.map((reply) => reply.text)].join(" ").toLowerCase().includes(query);
+      }
+      searchInput.addEventListener("input", () => {
+        feedEl.querySelectorAll(".post").forEach((el) => { el.hidden = !matchesSearch(posts.get(el.dataset.id)); });
+      });
+
+      // Model picker. The mock ignores it; with WebLLM, load only the chosen
+      // version, when it is first needed (see AGENTS.md).
+      const versionSelect = $("model-version");
+      const MODEL_KEY = "kobajinverse.model";
+      let chosenVersion = DEFAULT_VERSION;
+      try { chosenVersion = localStorage.getItem(MODEL_KEY) || DEFAULT_VERSION; } catch { /* default */ }
+      versionSelect.innerHTML = MODELS.map((model) => `<option value="${model.version}">${model.version}${model.version === DEFAULT_VERSION ? "（標準）" : ""}</option>`).join("");
+      versionSelect.value = MODELS.some((model) => model.version === chosenVersion) ? chosenVersion : DEFAULT_VERSION;
+      versionSelect.addEventListener("change", () => {
+        try { localStorage.setItem(MODEL_KEY, versionSelect.value); } catch { /* this visit only */ }
+      });
+      $("model-state").textContent = llm.name === "mock" ? "モック推論で動作中" : "ブラウザ内で推論中";
+      $("mock-tag").hidden = llm.name !== "mock";
+
+      // =====================================================================
+      // 8. Start
+      // =====================================================================
+
+      renderMembers();
+      syncComposer();
+      seedTimeline().then(postLoop);
+      trendLoop();
+
+      if ("serviceWorker" in navigator && import.meta.env.PROD) {
+        navigator.serviceWorker.register("/sw.js").catch(() => { /* the page works without it */ });
+      }
+    </script>
   </body>
 </html>

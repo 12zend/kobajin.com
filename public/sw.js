@@ -1,4 +1,4 @@
-const SHELL_CACHE = "kobajin-shell-v3";
+const SHELL_CACHE = "kobajin-shell-v4";
 const SHELL_FILES = ["/", "/logo.svg", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
