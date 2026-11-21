@@ -460,9 +460,15 @@
           decoding: { temperature: 0.9, top_p: 1, repetition_penalty: 1.12, max_tokens: 32 },
         },
         reply: {
-          system: "SNSで他人の投稿に返信する。10文字以内で、相手の言葉を拾って短く反応する。暴言や物騒な投稿には同調も復唱もせず、軽くツッコむか心配する。",
+          system: "SNSで他人の投稿に返信する。10文字以内で、相手の言葉を拾って短く反応する。自分に向けた質問には相槌でごまかさず、自分の発言について短く答える。記憶欄にない自分の経験・予定・好みは作らず、決まっていなければそう言う。暴言や物騒な投稿には同調も復唱もせず、軽くツッコむか心配する。",
           // `parent` is set when the text is itself a reply: what it answers.
-          user: ({ text, parent, others }) => `${parent ? `元の発言: ${parent}\nそれへの返信: ${text}\nこの返信に返す。` : `投稿: ${text}`}${others.length ? `\nほかの返信（同じことは言わない）: ${others.join(" / ")}` : ""}`,
+          // `addressed` means the reply was aimed at this account, so
+          // `parent` is its own line and a question needs an answer.
+          user: ({ text, parent, addressed, others }) => `${parent
+            ? addressed
+              ? `自分の発言: ${parent}\nそれへの相手の返信: ${text}\n相手に返す。質問ならちゃんと答える。`
+              : `元の発言: ${parent}\nそれへの返信: ${text}\nこの返信に返す。`
+            : `投稿: ${text}`}${others.length ? `\nほかの返信（同じことは言わない）: ${others.join(" / ")}` : ""}`,
           decoding: { temperature: 0.8, top_p: 1, repetition_penalty: 1.12, max_tokens: 20 },
         },
         react: {
@@ -555,6 +561,47 @@
           [/ハロー|hello|やっほ|ヤッホー|おっす|よっす|^やあ/i, ["ハロー", "やっほー", "よっ", "元気やな", "おっす"]],
         ];
 
+        // When someone answers this account's own line, it talks back: a
+        // question gets an answer (by its question word), cheers get thanks,
+        // and agreement gets agreement, never another 「たしかに？」. Answers
+        // stay vague, since the mock knows nothing about kobajin's plans.
+        const QUESTION = /[?？]|なんで|なぜ|どう|どこ|いつ(?!も)|だれ|誰|なに|何|なんな|なんです|なんや(?!ろ)|どっち|どれ|どんな/;
+        const GUESS = /とか[?？]|って(こと)?[?？]|(ってこと|のこと|ですか|すか)[?？]?$|みたいな[?？]/;
+        const ANSWERS = [
+          [/どうした|どしたん|大丈夫/, ["なんでもない", "いや別に", "ちょっと思っただけ", "大丈夫"]],
+          [/なんで(?!す)|なぜ|何で|どうして/, ["なんとなく", "そういう気分", "流れで", "特に理由はない", "気分の問題"]],
+          [/いつ(?!も)/, ["そのうち", "近いうち", "気が向いたら", "今から"]],
+          [/どこ/, ["どっか", "まだ決めてない", "ここではない"]],
+          [/だれ|誰/, ["自分", "みんな", "誰やろな"]],
+          [/どっち|どちら/, ["両方", "どっちも", "選べん"]],
+          [/どれ/, ["全部", "選べん"]],
+          [/どう(いう|ゆう)|どゆ|意味|つまり/, ["そのまんま", "言葉どおり", "ノリで言った", "説明むずい"]],
+          [/どう|どんな/, ["いい感じ", "まあまあ", "ぼちぼち", "そこそこ"]],
+          [/なに|何|なん[?？]|なんな|なんです|なんや(?!ろ)/, ["いろいろ", "全部", "まだ決めてない", "それを今考えてる", "頭の中のやつ", "うまく言えんやつ"]],
+          // A guess (sb3ファイルとか？) gets a yes, not a question back. It
+          // comes after the question words, so 何を〜ですか is a what-question.
+          [GUESS, ["そうそう", "それそれ", "それもある", "まあそんな感じ", "そういうこと"]],
+          [/ほんま|まじ|マジ|本当|ほんと/, ["ほんま", "まじ", "たぶん"]],
+          [/./, ["うん", "まあね", "そんな感じ", "たぶんな"]],
+        ];
+        const BACK_TALK = [
+          [/がんば|頑張|ファイト|応援/, ["ありがと", "がんばる", "がんばるわ"]],
+          [/えらい|すごい|いいね|最高|天才|強い|さすが/, ["ありがと", "うれしい", "せやろ", "照れる"]],
+          [/わかる|それな|たしかに|それはそう|ほんまそれ|同じ|せやな/, ["やろ", "せやろ", "わかってくれるか", "それな"]],
+        ];
+        function answer(text) {
+          if (toneOf(text) === "harsh") return null;
+          if (QUESTION.test(text)) {
+            const [pattern, lines] = ANSWERS.find(([p]) => p.test(text));
+            // A guess names the thing, so the answer can name it back.
+            const word = keyword(text);
+            const named = pattern === GUESS && word ? [`そう、${word}`, `${word}もある`].filter((line) => chars(line).length <= 10) : [];
+            return [...lines, ...named];
+          }
+          const back = BACK_TALK.find(([pattern]) => pattern.test(text));
+          return back ? back[1] : null;
+        }
+
         const NOUN_ECHOES = {
           question: (w) => [`${w}？`, `${w}かぁ`, `${w}むずい`],
           funny: (w) => [`${w}で草`, `${w}おもろ`],
@@ -614,6 +661,8 @@
               const fresh = (list) => list.filter((line) => !others.includes(line));
               const greeting = GREETINGS.find(([pattern]) => pattern.test(text));
               if (greeting && fresh(greeting[1]).length) return pick(fresh(greeting[1]));
+              const answers = input.addressed && answer(text);
+              if (answers) return pick(fresh(answers).length ? fresh(answers) : answers);
               const tone = replyTone(text);
               const echoable = tone !== "question" || chars(text) <= 7;
               const echo = echoable ? fresh(echoes(keyword(text), tone)) : [];
@@ -691,8 +740,8 @@
         },
         // `others` is read when the job runs, so replies queued together still
         // see the ones that finished before them.
-        async reply({ text, parent = null }, others) {
-          const raw = await enqueue(PRIORITY.visitor, () => llm.complete("reply", { text, parent, others: others() }));
+        async reply({ text, parent = null, addressed = false }, others) {
+          const raw = await enqueue(PRIORITY.visitor, () => llm.complete("reply", { text, parent, addressed, others: others() }));
           return clean(raw, 10);
         },
         // One emoji for the post; anything off the list falls back to 🤔.
@@ -1027,7 +1076,11 @@
         try {
           const shown = sleep(rand(900, 1800));
           const prompt = reply
-            ? { text: withoutMentions(reply.text), parent: withoutMentions(reply.parentText) }
+            ? {
+              text: withoutMentions(reply.text),
+              parent: withoutMentions(reply.parentText),
+              addressed: reply.toId === account.id || mentionedBots(reply.text).includes(account),
+            }
             : { text: withoutMentions(post.text) };
           const text = await brain.reply(prompt, () => [...post.replies.map((r) => r.text), ...post.drafts]);
           if (text) post.drafts.push(text);
@@ -1082,7 +1135,7 @@
       // answering their own post brings in one or two others instead.
       function visitorReply(post, toId, parentText, text) {
         addReply(post, VISITOR.id, text, toId);
-        const reply = { authorId: VISITOR.id, text, parentText };
+        const reply = { authorId: VISITOR.id, toId, text, parentText };
         const target = ACCOUNTS[toId];
         const mentioned = mentionedBots(text).filter((account) => account.id !== toId);
         const responders = target.visitor
