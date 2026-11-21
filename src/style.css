@@ -110,6 +110,20 @@ button:focus-visible, textarea:focus-visible, a:focus-visible, summary:focus-vis
 .device-row { display: flex; align-items: center; gap: 8px; }
 .device-title { color: var(--ink); font-size: 13px; font-weight: 600; }
 .device-detail { margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.composer-foot { display: flex; align-items: flex-start; gap: 12px; margin: 7px 8px 0; }
+.composer-foot .composer-hint { flex: 1 1 auto; margin: 0; text-align: left; }
+.model-picker { position: relative; flex: 0 0 auto; }
+.model-button { display: inline-flex; align-items: center; gap: 2px; min-height: 24px; margin: -4px -6px 0 0; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.model-button:hover, .model-button[aria-expanded="true"] { background: var(--line); color: var(--ink); }
+.model-button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.model-menu { position: absolute; right: -6px; bottom: calc(100% + 8px); z-index: 20; width: min(280px, calc(100vw - 32px)); margin: 0; padding: 4px; list-style: none; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+.model-option { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; padding: 8px 10px; border-radius: 8px; cursor: pointer; outline: none; }
+.model-option:hover, .model-option:focus-visible, .model-option[aria-selected="true"] { background: var(--bg); }
+.model-option-name { color: var(--ink); font-size: 13px; font-weight: 600; }
+.model-option-state { color: var(--faint); font-size: 11.5px; text-align: right; }
+.model-option[aria-selected="true"] .model-option-state { color: var(--online); }
+.model-option-summary { grid-column: 1 / -1; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.model-tag { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
 .device-button { width: 100%; min-height: 34px; margin-top: 10px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 600; cursor: pointer; }
 .device-button:hover:not(:disabled) { opacity: .88; }
 .device-button:disabled { opacity: .5; cursor: progress; }
@@ -254,7 +268,7 @@ body[data-presence="error"] .arrival-detail { color: var(--danger); }
 .stop-button:hover { background: var(--line); }
 .send-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .stop-button svg { width: 16px; height: 16px; fill: currentColor; }
-.composer-hint { margin: 7px 8px 0; color: var(--faint); font-size: 11.5px; line-height: 1.45; text-align: center; }
+.composer-hint { color: var(--faint); font-size: 11.5px; line-height: 1.45; }
 
 /* ---------- Feed ---------- */
 
@@ -334,7 +348,7 @@ body[data-presence="error"] .arrival-detail { color: var(--danger); }
   /* 16px keeps iOS Safari from zooming into the field. */
   .composer textarea { font-size: 16px; }
   .composer-hint { font-size: 11px; }
-  body[data-presence="online"] .composer-hint { display: none; }
+  body[data-presence="online"] .composer-hint { visibility: hidden; }
   .about-button { display: none; }
   .feed-inner { width: calc(100% - 24px); padding-top: 18px; }
   .feed-text, .feed-source, .feed-thread { margin-left: 0; }

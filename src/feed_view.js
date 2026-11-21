@@ -40,10 +40,10 @@ function element(tag, className, text) {
  *   scheduler   engine scheduler shared with chat
  *   getEngine() current WebLLM engine or null
  *   isChatBusy() true while chat is generating
- *   modelId     versioned model id for logs
+ *   getModelId() versioned model id of the selected version, for logs
  *   announce(text) screen-reader status
  */
-export function initFeed({ scheduler, getEngine, isChatBusy, modelId, announce }) {
+export function initFeed({ scheduler, getEngine, isChatBusy, getModelId, announce }) {
   const list = document.querySelector("#feed-list");
   const statusLine = document.querySelector("#feed-status");
   const postNowButton = document.querySelector("#feed-post-now");
@@ -181,7 +181,7 @@ export function initFeed({ scheduler, getEngine, isChatBusy, modelId, announce }
       updateStatus();
       const result = await composeTweet(engine, article, {
         recentTexts: posts.map((post) => post.text),
-        modelId,
+        modelId: getModelId(),
         signal: lease.signal,
       });
       const logRow = await store.addLog({ ...result.log, accepted: result.accepted, mode });
@@ -200,7 +200,7 @@ export function initFeed({ scheduler, getEngine, isChatBusy, modelId, announce }
       }
     } catch (error) {
       if (error instanceof RoleAbortedError || error?.name === "AbortError") {
-        if (store) logs.unshift(await store.addLog({ interrupted: true, mode, model_id: modelId }));
+        if (store) logs.unshift(await store.addLog({ interrupted: true, mode, model_id: getModelId() }));
       } else {
         console.error("kobajinAI feed post failed", error);
         announce?.("kobajinAI could not write a post this time.");

@@ -121,7 +121,16 @@
             <button id="stop" class="stop-button" type="button" aria-label="Stop the reply" title="Stop" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" /></svg></button>
             <button id="send" class="send-button" type="submit" aria-label="Send message" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>
           </form>
-          <p class="composer-hint" id="composer-hint">Send a few short messages if you like — it waits until you pause, then answers them together.</p>
+          <div class="composer-foot">
+            <p class="composer-hint" id="composer-hint">Send a few short messages if you like — it waits until you pause, then answers them together.</p>
+            <div class="model-picker">
+              <button class="model-button" id="model-button" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="model-menu" aria-label="Model">
+                <span id="model-current">v3</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+              </button>
+              <ul class="model-menu" id="model-menu" role="listbox" aria-label="Model" hidden></ul>
+            </div>
+          </div>
         </footer>
       </main>
     </div>

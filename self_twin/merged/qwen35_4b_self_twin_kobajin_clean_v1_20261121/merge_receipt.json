@@ -1,0 +1,30 @@
+{
+  "base_repo": "Qwen/Qwen3.5-4B",
+  "base_revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+  "adapter_path": "/Users/kobajin/repo/kobajin.com/self_twin/adapter/experiment-r8-kobajin-clean-v1-lr5e5/adapter",
+  "adapter_sha256": "75feda45165454f6cfca0670f0d641f41926da81fb9edc26dfd534cb4d71b4ee",
+  "evaluation_decision": "/Users/kobajin/repo/kobajin.com/self_twin/evaluation/decision.json",
+  "evaluation_gate_passed": false,
+  "experimental_unapproved_merge": false,
+  "owner_release_version": "v1",
+  "candidate_name": "v1",
+  "evaluation_reason": "Owner policy (2026-11-21): every trained version is published to kobajin/kobajinAI and selectable on the site. Its evaluation is in self_twin/training/training_report.md; publishing it does not claim it is better than the base or other versions.",
+  "merge_method": "PEFT PeftModel.merge_and_unload()",
+  "dtype": "bfloat16",
+  "format": "Transformers Safetensors",
+  "base_preserved": true,
+  "tokenizer_and_chat_template_saved": true,
+  "huggingface_release": {
+    "repo_id": "kobajin/kobajinAI",
+    "repo_type": "model",
+    "path": "v1/",
+    "revision": "8d6dab15195505c8c92c2d9ceb99f2551239f2d4",
+    "url": "https://huggingface.co/kobajin/kobajinAI/commit/8d6dab15195505c8c92c2d9ceb99f2551239f2d4",
+    "quantization": "q4f16_1",
+    "parameter_shards": 76,
+    "bundle_file_count_uploaded": 80,
+    "public": true,
+    "owner_authorized": true,
+    "release_label": "owner policy: every trained version is published and selectable"
+  }
+}

@@ -35,12 +35,27 @@ def main() -> None:
         action="store_true",
         help="Merge a listed evaluation candidate while recording that its quality gate failed.",
     )
+    parser.add_argument(
+        "--owner-release",
+        metavar="VERSION",
+        help="Merge a versioned site release (e.g. v2). The owner publishes every trained version as a "
+        "selectable model; its evaluation is recorded in training_report.md, not gated here.",
+    )
     args = parser.parse_args()
 
     decision = json.loads(args.decision.read_text(encoding="utf-8"))
     gate_passed = decision.get("status") == "passed" and decision.get("merge_allowed") is True
     candidate = None
-    if gate_passed:
+    if args.owner_release:
+        gate_passed = False
+        candidate_name = args.owner_release
+        decision = {
+            "reason": "Owner policy (2026-11-21): every trained version is published to kobajin/kobajinAI "
+            "and selectable on the site. Its evaluation is in self_twin/training/training_report.md; "
+            "publishing it does not claim it is better than the base or other versions.",
+            "base_revision": json.loads((PROJECT / "training" / "base_checkpoint.json").read_text(encoding="utf-8"))["revision"],
+        }
+    elif gate_passed:
         decided_adapter = Path(decision.get("adapter_path", "")).resolve()
         if args.adapter.resolve() != decided_adapter:
             raise SystemExit("Requested adapter does not match the adapter that passed evaluation")
@@ -126,7 +141,8 @@ def main() -> None:
         "adapter_sha256": sha256_file(weight_path),
         "evaluation_decision": str(args.decision.resolve()),
         "evaluation_gate_passed": gate_passed,
-        "experimental_unapproved_merge": not gate_passed,
+        "experimental_unapproved_merge": not gate_passed and not args.owner_release,
+        "owner_release_version": args.owner_release,
         "candidate_name": candidate_name,
         "evaluation_reason": decision.get("reason"),
         "merge_method": "PEFT PeftModel.merge_and_unload()",

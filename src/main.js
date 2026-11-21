@@ -6,12 +6,11 @@ import {
 import { getMemoryContext, lookupMemories } from "./memory.js";
 import { createEngineScheduler } from "./agents.js";
 import { initFeed } from "./feed_view.js";
+import { MODELS, findModel } from "./models.js";
 import SYSTEM_PROMPT_SOURCE from "../self_twin/inference/system_prompt.txt?raw";
 
+// Every version is a Qwen3.5-4B q4f16_1 bundle, so all reuse WebLLM's prebuilt library.
 const BASE_MODEL_ID = "Qwen3.5-4B-q4f16_1-MLC";
-const MODEL_REVISION = "a2534a20253d54cce925307fbd76086498b09a11";
-const MODEL_ID = "kobajinAI-qwen35-4b-luna-v3-a2534a2-q4f16_1-MLC";
-const MODEL_URL = import.meta.env.VITE_MODEL_URL || `https://huggingface.co/kobajin/kobajinAI/resolve/${MODEL_REVISION}/`;
 const SYSTEM_PROMPT = SYSTEM_PROMPT_SOURCE.trim();
 
 // Turn-taking: after the visitor sends, kobajinAI waits for a short pause so
@@ -54,8 +53,12 @@ const feedToggle = $("#feed-toggle");
 const chatsTab = $("#chats-tab");
 const jumpLatest = $("#jump-latest");
 const menuUnread = $("#menu-unread");
+const modelButton = $("#model-button");
+const modelCurrent = $("#model-current");
+const modelMenu = $("#model-menu");
 
 const conversationStorageKey = "kobajinAI.conversations.v1";
+const modelStorageKey = "kobajinAI.model";
 const engineScheduler = createEngineScheduler();
 engineScheduler.setInterrupt(() => engine?.interruptGenerate());
 const storagePersistence = requestStoragePersistence();
@@ -63,7 +66,11 @@ const storagePersistence = requestStoragePersistence();
 let engine = null;
 let enginePromise = null;
 let worker = null;
-let modelCached = false;
+let modelCached = false; // whether the selected version is saved in this browser
+const cachedVersions = new Set();
+// Only the selected version is ever loaded, and only once the visitor chats.
+let selectedModel = findModel(readSavedModel());
+let loadToken = 0;
 let presence = "offline"; // offline | loading | online | unsupported | error
 let feedVisible = false;
 
@@ -97,6 +104,7 @@ function sanitizeMessage(message) {
   const clean = { role: message.role, content: message.content, timestamp: Number(message.timestamp) || 0 };
   if (message.readAt) clean.readAt = Number(message.readAt) || undefined;
   if (message.stopped) clean.stopped = true;
+  if (typeof message.model === "string" && /^v\d+$/.test(message.model)) clean.model = message.model;
   const memory = sanitizeMemory(message.memory);
   if (memory) clean.memory = memory;
   return clean;
@@ -142,6 +150,14 @@ function saveThread(thread) {
     .slice(0, 40);
   persistThreads();
   renderConversationList();
+}
+
+function readSavedModel() {
+  try {
+    return localStorage.getItem(modelStorageKey);
+  } catch {
+    return null;
+  }
 }
 
 async function requestStoragePersistence() {
@@ -247,14 +263,14 @@ function updatePresenceLine() {
   if (presence !== "online") return;
   if (job && job.threadId === active.id) presenceLine.textContent = "typing…";
   else if (job) presenceLine.textContent = "Online · replying in another chat";
-  else presenceLine.textContent = "Online · running on this device";
+  else presenceLine.textContent = `Online · ${selectedModel.version} · running on this device`;
 }
 
 function updateComposerHint() {
   const hints = {
     offline: modelCached
-      ? "The model is saved in this browser. Sending opens it."
-      : "Your first message starts a one-time download (about 2.2 GiB). Keep writing while it loads.",
+      ? `${selectedModel.version} is saved in this browser. Sending a message loads it into memory.`
+      : `Your first message downloads ${selectedModel.version} once (about 2.2 GiB). Keep writing while it loads.`,
     loading: "Keep writing — your messages are delivered as soon as it's online.",
     online: "Send a few short messages if you like — it waits for a pause, then answers them together.",
     unsupported: "This browser can't run the model. Open the page in a recent desktop Chrome or Edge.",
@@ -313,7 +329,10 @@ function buildAppConfig() {
   if (!baseRecord) return null;
   return {
     ...prebuiltAppConfig,
-    model_list: [...prebuiltAppConfig.model_list, { ...baseRecord, model_id: MODEL_ID, model: MODEL_URL }],
+    model_list: [
+      ...prebuiltAppConfig.model_list,
+      ...MODELS.map((model) => ({ ...baseRecord, model_id: model.id, model: model.url })),
+    ],
   };
 }
 
@@ -353,20 +372,32 @@ async function ensureModel() {
   arrivalBar.style.width = "0%";
   progressDetail.textContent = modelCached ? "Opening the model saved in this browser." : "Connecting to the model repository on Hugging Face.";
   setPresence("loading", { line: "Coming online…", title: "Coming online…", detail: "Connecting…", button: "" });
-  liveStatus.textContent = "Loading the kobajinAI model into this browser.";
+  liveStatus.textContent = `Loading kobajinAI ${selectedModel.version} into this browser.`;
   void storagePersistence;
 
+  const token = ++loadToken;
+  const model = selectedModel;
+  const progress = (report) => { if (token === loadToken) applyProgress(report); };
   enginePromise = (async () => {
+    let loaded;
     if (import.meta.env.DEV && USE_MOCK_ENGINE) {
       const { createMockEngine } = await import("./dev_mock_engine.js");
-      engine = await createMockEngine(applyProgress, { cached: modelCached });
+      loaded = await createMockEngine(progress, { cached: modelCached });
     } else {
       worker = new Worker(new URL("./webllm.worker.js", import.meta.url), { type: "module" });
-      engine = await CreateWebWorkerMLCEngine(worker, MODEL_ID, { appConfig, initProgressCallback: applyProgress });
+      loaded = await CreateWebWorkerMLCEngine(worker, model.id, { appConfig, initProgressCallback: progress });
     }
+    // The visitor picked another version while this one was loading.
+    if (token !== loadToken) {
+      void loaded.unload?.().catch(() => {});
+      return null;
+    }
+    engine = loaded;
+    cachedVersions.add(model.version);
     modelCached = true;
+    renderModelOptions();
     applyProgress({ progress: 1, text: "Finish" });
-    setPresence("online", { line: "Online · running on this device", title: "Online on this device", detail: "Replies are written here, in this browser.", button: "" });
+    setPresence("online", { line: `Online · ${model.version} · running on this device`, title: `${model.version} online on this device`, detail: "Replies are written here, in this browser.", button: "" });
     setTimeout(() => { if (presence === "online") arrival.hidden = true; }, 1600);
     liveStatus.textContent = "kobajinAI is online in this browser.";
     feed.refresh();
@@ -374,6 +405,7 @@ async function ensureModel() {
     schedulePump(job ? 0 : 400);
     return engine;
   })().catch((error) => {
+    if (token !== loadToken) return null;
     console.error("kobajinAI model load failed", error);
     enginePromise = null;
     engine = null;
@@ -391,6 +423,92 @@ async function ensureModel() {
     return null;
   });
   return enginePromise;
+}
+
+// Frees the loaded version's GPU memory. Its weights stay in the browser cache.
+async function unloadModel() {
+  loadToken += 1;
+  const current = engine;
+  const currentWorker = worker;
+  engine = null;
+  enginePromise = null;
+  worker = null;
+  try {
+    await current?.unload?.();
+  } catch {
+    // Terminating the worker below frees the memory either way.
+  }
+  currentWorker?.terminate();
+}
+
+/* ---------- Model choice ---------- */
+
+function renderModelOptions() {
+  modelCurrent.textContent = selectedModel.version;
+  modelButton.title = `${selectedModel.version}: ${selectedModel.summary}`;
+  modelMenu.replaceChildren();
+  for (const model of MODELS) {
+    const current = model.version === selectedModel.version;
+    const option = element("li", "model-option");
+    option.role = "option";
+    option.tabIndex = -1;
+    option.dataset.version = model.version;
+    option.setAttribute("aria-selected", String(current));
+    const state = current && engine ? "In use" : cachedVersions.has(model.version) ? "Saved" : "2.2 GiB";
+    option.append(
+      element("span", "model-option-name", model.version),
+      element("span", "model-option-state", state),
+      element("span", "model-option-summary", model.summary),
+    );
+    modelMenu.append(option);
+  }
+}
+
+function openModelMenu() {
+  renderModelOptions();
+  modelMenu.hidden = false;
+  modelButton.setAttribute("aria-expanded", "true");
+  (modelMenu.querySelector('[aria-selected="true"]') || modelMenu.firstElementChild)?.focus();
+}
+
+function closeModelMenu({ focusButton = false } = {}) {
+  if (modelMenu.hidden) return;
+  modelMenu.hidden = true;
+  modelButton.setAttribute("aria-expanded", "false");
+  if (focusButton) modelButton.focus();
+}
+
+function offlinePresence() {
+  if (modelCached) {
+    return { line: `Offline · ${selectedModel.version} saved here · send a message to load it`, title: `${selectedModel.version} saved on this device`, detail: "Loaded into memory when you send a message.", button: "Bring online" };
+  }
+  return { line: "Offline · send a message to bring it online", title: `${selectedModel.version} not on this device yet`, detail: "About 2.2 GiB, downloaded once and kept in this browser.", button: "Bring online" };
+}
+
+async function selectModel(version) {
+  const next = findModel(version);
+  if (next.version === selectedModel.version) return;
+  if (job) {
+    // Let the reply in progress stop cleanly before its version is unloaded.
+    stopReply();
+    for (let waited = 0; job && waited < 5000; waited += 100) await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  selectedModel = next;
+  modelCached = cachedVersions.has(next.version);
+  try { localStorage.setItem(modelStorageKey, next.version); } catch { /* The choice still applies to this visit. */ }
+  renderModelOptions();
+  const wasLoaded = Boolean(engine || enginePromise);
+  if (wasLoaded) await unloadModel();
+  arrival.hidden = true;
+  arrivalBar.style.width = "0%";
+  if (presence !== "unsupported") setPresence("offline", offlinePresence());
+  liveStatus.textContent = wasLoaded
+    ? `Switched to ${next.version}. The previous version was unloaded from memory.`
+    : `Switched to ${next.version}.`;
+  feed.refresh();
+  renderThread();
+  // A chat already waiting for a reply is answered by the newly chosen version.
+  if (needsReply(active) && pending.has(active.id)) void ensureModel();
 }
 
 /* ---------- Thread rendering ---------- */
@@ -466,6 +584,7 @@ function renderThread() {
   rendered = { threadId: active.id, count: messages.length };
   let index = 0;
   let previousTime = 0;
+  let previousModel = null;
   while (index < messages.length) {
     const role = messages[index].role;
     const { group, body } = groupShell(role);
@@ -480,8 +599,12 @@ function renderThread() {
       if (index >= freshFrom) group.classList.add("fresh");
       if (role === "assistant") for (const line of replyLines(last.content)) body.append(element("div", bubbleClass, line));
       else body.append(element("div", bubbleClass, last.content));
-      if (role === "assistant" && (last.memory || last.stopped)) {
+      // Name the version that wrote a reply when it differs from the one before.
+      const versionChanged = role === "assistant" && last.model && last.model !== previousModel;
+      if (role === "assistant" && last.model) previousModel = last.model;
+      if (role === "assistant" && (last.memory || last.stopped || versionChanged)) {
         const meta = element("div", "group-meta");
+        if (versionChanged) meta.append(element("span", "model-tag", last.model));
         if (last.stopped) meta.append(element("span", "stopped-note", "Stopped"));
         const receipt = memoryReceipt(last.memory);
         if (receipt) meta.append(receipt);
@@ -625,7 +748,7 @@ async function replyTo(thread) {
   if (trailing.length === 0) return;
   const combined = trailing.map((message) => message.content).join("\n");
   const afterIndex = thread.messages.lastIndexOf(trailing[trailing.length - 1]);
-  job = { threadId: thread.id, afterIndex, lines: [], stopped: false, startedAt: Date.now() };
+  job = { threadId: thread.id, afterIndex, lines: [], stopped: false, startedAt: Date.now(), model: selectedModel.version };
   failures.delete(thread.id);
   let lease = null;
   let raw = "";
@@ -675,7 +798,7 @@ async function replyTo(thread) {
       reply = toUserFacingReply(raw, combined);
     }
     if (reply) {
-      thread.messages.splice(afterIndex + 1, 0, { role: "assistant", content: reply, timestamp: job.startedAt, ...(memory.kind !== "none" ? { memory } : {}), ...(job.stopped ? { stopped: true } : {}) });
+      thread.messages.splice(afterIndex + 1, 0, { role: "assistant", content: reply, timestamp: job.startedAt, model: job.model, ...(memory.kind !== "none" ? { memory } : {}), ...(job.stopped ? { stopped: true } : {}) });
       if (thread !== active) unread.add(thread.id);
       // Its lines were already shown live; don't animate them in a second time.
       else if (rendered.threadId === thread.id) rendered.count += 1;
@@ -836,6 +959,36 @@ function resizePrompt() {
 /* ---------- Events ---------- */
 
 loadButton.addEventListener("click", () => { void ensureModel(); });
+modelButton.addEventListener("click", () => {
+  if (modelMenu.hidden) openModelMenu();
+  else closeModelMenu();
+});
+modelMenu.addEventListener("click", (event) => {
+  const option = event.target.closest("[data-version]");
+  if (!option) return;
+  closeModelMenu({ focusButton: true });
+  void selectModel(option.dataset.version);
+});
+modelMenu.addEventListener("keydown", (event) => {
+  const options = [...modelMenu.querySelectorAll("[data-version]")];
+  const index = options.indexOf(document.activeElement);
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    const step = event.key === "ArrowDown" ? 1 : -1;
+    options[(index + step + options.length) % options.length]?.focus();
+  } else if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    document.activeElement?.click();
+  } else if (event.key === "Escape") {
+    event.stopPropagation();
+    closeModelMenu({ focusButton: true });
+  } else if (event.key === "Tab") {
+    closeModelMenu();
+  }
+});
+document.addEventListener("pointerdown", (event) => {
+  if (!event.target.closest(".model-picker")) closeModelMenu();
+});
 $("#presence").addEventListener("click", () => {
   if (feedVisible) { showChat(); return; }
   if (!engine && presence !== "loading" && presence !== "unsupported") void ensureModel();
@@ -910,7 +1063,7 @@ const feed = initFeed({
   scheduler: engineScheduler,
   getEngine: () => engine,
   isChatBusy: () => Boolean(job) || pending.size > 0,
-  modelId: MODEL_ID,
+  getModelId: () => selectedModel.id,
   announce: (text) => { liveStatus.textContent = text; },
 });
 
@@ -922,12 +1075,8 @@ if (resumable && needsReply(resumable) && Date.now() - resumable.updatedAt < RES
   pending.add(active.id);
 }
 
-setPresence("offline", {
-  line: "Offline · send a message to bring it online",
-  title: "Not on this device yet",
-  detail: "About 2.2 GiB, downloaded once and kept in this browser.",
-  button: "Bring online",
-});
+setPresence("offline", offlinePresence());
+renderModelOptions();
 renderConversationList();
 renderThread();
 scrollToLatest();
@@ -939,17 +1088,24 @@ scrollToLatest();
     return;
   }
   const appConfig = buildAppConfig();
-  try {
-    modelCached = USE_MOCK_ENGINE ? DEV_FLAGS.has("cached") : Boolean(appConfig && await hasModelInCache(MODEL_ID, appConfig));
-  } catch {
-    modelCached = false;
-  }
-  if (modelCached && presence === "offline") {
-    // Already saved here: open it right away so kobajinAI is online by the time you've typed.
-    setPresence("offline", { line: "Saved on this device · opening…", title: "Saved on this device", detail: "Opening the saved model…", button: "" });
+  // Saved versions are only marked as saved here. Nothing is loaded into
+  // memory until the visitor sends a message (or presses Bring online).
+  await Promise.all(MODELS.map(async (model) => {
+    try {
+      const saved = USE_MOCK_ENGINE
+        ? DEV_FLAGS.has("cached") && model.version === selectedModel.version
+        : Boolean(appConfig && await hasModelInCache(model.id, appConfig));
+      if (saved) cachedVersions.add(model.version);
+    } catch {
+      // Unknown cache state reads as not saved.
+    }
+  }));
+  modelCached = cachedVersions.has(selectedModel.version);
+  renderModelOptions();
+  if (presence === "offline") setPresence("offline", offlinePresence());
+  if (!engine && pending.has(active.id) && needsReply(active)) {
+    // A message is already waiting from the last visit, so this is a chat.
     void ensureModel();
-  } else {
-    updateComposerHint();
   }
 })();
 

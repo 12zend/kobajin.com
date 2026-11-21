@@ -1,0 +1,34 @@
+{
+  "seed": 20261121,
+  "items_per_kind": 40,
+  "min_shared_span": 5,
+  "decoding": {
+    "temperature": 0.72,
+    "top_p": 1.0,
+    "repetition_penalty": 1.12,
+    "max_new_tokens": 160
+  },
+  "adapters": {
+    "v3": "adapter/experiment-r8-luna-synthetic-1000-v3/adapter",
+    "v1": "adapter/experiment-r8-kobajin-clean-v1-lr5e5/adapter",
+    "v2": "adapter/experiment-r8-kobajin-clean-v2-memory/adapter"
+  },
+  "candidates": {
+    "base": {
+      "relevant_memory_used": "6/29",
+      "distractor_memory_used": "3/40"
+    },
+    "v3": {
+      "relevant_memory_used": "1/29",
+      "distractor_memory_used": "0/40"
+    },
+    "v1": {
+      "relevant_memory_used": "0/29",
+      "distractor_memory_used": "0/40"
+    },
+    "v2": {
+      "relevant_memory_used": "27/29",
+      "distractor_memory_used": "6/40"
+    }
+  }
+}

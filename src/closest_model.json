@@ -1,0 +1,6 @@
+{
+  "version": "v2",
+  "decided_at": "2026-11-21",
+  "decided_by": "owner",
+  "basis": "On held-out real replies, v2's token NLL (3.639) is close to v1's (3.617) and far below v3 (4.332) and the base (4.826). Its replies keep kobajin's casual multi-line voice (median 9.5 characters, the same as his real replies). Unlike v1 and v3, it uses retrieved memories: 27 of 29 relevant held-out memories and 2 of 3 fixed memory questions, against 0 and 0 for v1 and 1 and 1 for v3. It also brings in unrelated memories in 6 of 40 cases (v1 and v3: 0) and still makes up plans and situations at times. Details are in self_twin/training/training_report.md."
+}

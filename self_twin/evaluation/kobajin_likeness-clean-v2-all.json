@@ -1,0 +1,353 @@
+{
+  "seed": 20261120,
+  "test_rows_scored": 240,
+  "generation_rows": 60,
+  "max_length": 768,
+  "decoding": {
+    "temperature": 0.72,
+    "top_p": 1.0,
+    "repetition_penalty": 1.12
+  },
+  "system_prompts": {
+    "prod": "次のグループ会話の「自分」として、最後の発言に自然な返事だけをしてください。最新…"
+  },
+  "adapters": {
+    "ck10000": "adapter/experiment-r8-kobajin-clean-v2-memory/checkpoints/checkpoint-10000",
+    "ck12000": "adapter/experiment-r8-kobajin-clean-v2-memory/checkpoints/checkpoint-12000",
+    "ck14000": "adapter/experiment-r8-kobajin-clean-v2-memory/checkpoints/checkpoint-14000",
+    "ck16000": "adapter/experiment-r8-kobajin-clean-v2-memory/checkpoints/checkpoint-16000",
+    "ck17400": "adapter/experiment-r8-kobajin-clean-v2-memory/checkpoints/checkpoint-17400",
+    "ck2000": "adapter/experiment-r8-kobajin-clean-v2-memory/checkpoints/checkpoint-2000",
+    "ck4000": "adapter/experiment-r8-kobajin-clean-v2-memory/checkpoints/checkpoint-4000",
+    "ck6000": "adapter/experiment-r8-kobajin-clean-v2-memory/checkpoints/checkpoint-6000",
+    "ck8000": "adapter/experiment-r8-kobajin-clean-v2-memory/checkpoints/checkpoint-8000",
+    "final": "adapter/experiment-r8-kobajin-clean-v2-memory/adapter"
+  },
+  "real_reference_style": {
+    "n": 60,
+    "median_chars": 9.5,
+    "share_le5_chars": 0.317,
+    "share_gt100_chars": 0.0,
+    "mean_lines": 2.08,
+    "keigo_rate": 0.033,
+    "assistantism_rate": 0.0,
+    "synthetic_template_rate": 0.0,
+    "placeholder_only_rate": 0.0,
+    "repeated_span_rate": 0.017,
+    "boku_rate": 0.067,
+    "laugh_w_rate": 0.0,
+    "char_bigram_jsd_vs_real": 0.6075
+  },
+  "candidates": {
+    "ck10000": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.6911,
+          "perplexity": 40.09,
+          "by_category": {
+            "conversation": 3.898,
+            "long_explanation_or_story": 2.4621,
+            "question_or_prompt": 4.1086,
+            "reaction_or_joke": 4.8581,
+            "short_reaction": 3.4801,
+            "technical_or_project": 4.2117
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 8.5,
+        "share_le5_chars": 0.3,
+        "share_gt100_chars": 0.0,
+        "mean_lines": 1.77,
+        "keigo_rate": 0.0,
+        "assistantism_rate": 0.0,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.017,
+        "boku_rate": 0.05,
+        "laugh_w_rate": 0.05,
+        "char_bigram_jsd_vs_real": 0.6634
+      }
+    },
+    "ck12000": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.6598,
+          "perplexity": 38.85,
+          "by_category": {
+            "conversation": 3.87,
+            "long_explanation_or_story": 2.4362,
+            "question_or_prompt": 4.1012,
+            "reaction_or_joke": 4.8088,
+            "short_reaction": 3.4351,
+            "technical_or_project": 4.0623
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 11.5,
+        "share_le5_chars": 0.333,
+        "share_gt100_chars": 0.033,
+        "mean_lines": 2.05,
+        "keigo_rate": 0.05,
+        "assistantism_rate": 0.0,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.05,
+        "boku_rate": 0.15,
+        "laugh_w_rate": 0.033,
+        "char_bigram_jsd_vs_real": 0.6694
+      }
+    },
+    "ck14000": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.6465,
+          "perplexity": 38.34,
+          "by_category": {
+            "conversation": 3.8569,
+            "long_explanation_or_story": 2.4277,
+            "question_or_prompt": 4.0747,
+            "reaction_or_joke": 4.7795,
+            "short_reaction": 3.4331,
+            "technical_or_project": 4.0766
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 10.5,
+        "share_le5_chars": 0.317,
+        "share_gt100_chars": 0.017,
+        "mean_lines": 1.82,
+        "keigo_rate": 0.033,
+        "assistantism_rate": 0.0,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.017,
+        "boku_rate": 0.05,
+        "laugh_w_rate": 0.017,
+        "char_bigram_jsd_vs_real": 0.6853
+      }
+    },
+    "ck16000": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.6397,
+          "perplexity": 38.08,
+          "by_category": {
+            "conversation": 3.8472,
+            "long_explanation_or_story": 2.4267,
+            "question_or_prompt": 4.0721,
+            "reaction_or_joke": 4.78,
+            "short_reaction": 3.4154,
+            "technical_or_project": 4.0755
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 10.0,
+        "share_le5_chars": 0.317,
+        "share_gt100_chars": 0.033,
+        "mean_lines": 1.83,
+        "keigo_rate": 0.017,
+        "assistantism_rate": 0.0,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.017,
+        "boku_rate": 0.033,
+        "laugh_w_rate": 0.033,
+        "char_bigram_jsd_vs_real": 0.6795
+      }
+    },
+    "ck17400": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.6391,
+          "perplexity": 38.06,
+          "by_category": {
+            "conversation": 3.8461,
+            "long_explanation_or_story": 2.4267,
+            "question_or_prompt": 4.0722,
+            "reaction_or_joke": 4.7781,
+            "short_reaction": 3.4167,
+            "technical_or_project": 4.0723
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 9.5,
+        "share_le5_chars": 0.333,
+        "share_gt100_chars": 0.033,
+        "mean_lines": 1.7,
+        "keigo_rate": 0.033,
+        "assistantism_rate": 0.0,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.017,
+        "boku_rate": 0.033,
+        "laugh_w_rate": 0.033,
+        "char_bigram_jsd_vs_real": 0.6767
+      }
+    },
+    "ck2000": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.8457,
+          "perplexity": 46.79,
+          "by_category": {
+            "conversation": 4.0397,
+            "long_explanation_or_story": 2.5549,
+            "question_or_prompt": 4.336,
+            "reaction_or_joke": 5.1429,
+            "short_reaction": 3.6818,
+            "technical_or_project": 4.2029
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 9.5,
+        "share_le5_chars": 0.4,
+        "share_gt100_chars": 0.0,
+        "mean_lines": 1.3,
+        "keigo_rate": 0.0,
+        "assistantism_rate": 0.0,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.0,
+        "boku_rate": 0.033,
+        "laugh_w_rate": 0.033,
+        "char_bigram_jsd_vs_real": 0.6581
+      }
+    },
+    "ck4000": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.7424,
+          "perplexity": 42.2,
+          "by_category": {
+            "conversation": 3.9382,
+            "long_explanation_or_story": 2.4742,
+            "question_or_prompt": 4.1588,
+            "reaction_or_joke": 4.9822,
+            "short_reaction": 3.623,
+            "technical_or_project": 4.2742
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 11.0,
+        "share_le5_chars": 0.333,
+        "share_gt100_chars": 0.033,
+        "mean_lines": 2.43,
+        "keigo_rate": 0.1,
+        "assistantism_rate": 0.017,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.0,
+        "boku_rate": 0.033,
+        "laugh_w_rate": 0.0,
+        "char_bigram_jsd_vs_real": 0.5836
+      }
+    },
+    "ck6000": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.7306,
+          "perplexity": 41.7,
+          "by_category": {
+            "conversation": 3.9293,
+            "long_explanation_or_story": 2.4975,
+            "question_or_prompt": 4.1449,
+            "reaction_or_joke": 4.8871,
+            "short_reaction": 3.6152,
+            "technical_or_project": 4.1648
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 14.0,
+        "share_le5_chars": 0.3,
+        "share_gt100_chars": 0.0,
+        "mean_lines": 1.88,
+        "keigo_rate": 0.033,
+        "assistantism_rate": 0.017,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.0,
+        "boku_rate": 0.017,
+        "laugh_w_rate": 0.067,
+        "char_bigram_jsd_vs_real": 0.6158
+      }
+    },
+    "ck8000": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.7022,
+          "perplexity": 40.54,
+          "by_category": {
+            "conversation": 3.9068,
+            "long_explanation_or_story": 2.4602,
+            "question_or_prompt": 4.1361,
+            "reaction_or_joke": 4.8582,
+            "short_reaction": 3.5329,
+            "technical_or_project": 4.1538
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 13.0,
+        "share_le5_chars": 0.267,
+        "share_gt100_chars": 0.017,
+        "mean_lines": 1.6,
+        "keigo_rate": 0.017,
+        "assistantism_rate": 0.0,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.0,
+        "boku_rate": 0.017,
+        "laugh_w_rate": 0.017,
+        "char_bigram_jsd_vs_real": 0.6345
+      }
+    },
+    "final": {
+      "nll": {
+        "prod": {
+          "token_nll": 3.6391,
+          "perplexity": 38.06,
+          "by_category": {
+            "conversation": 3.8461,
+            "long_explanation_or_story": 2.4267,
+            "question_or_prompt": 4.0722,
+            "reaction_or_joke": 4.7781,
+            "short_reaction": 3.4167,
+            "technical_or_project": 4.0723
+          }
+        }
+      },
+      "style": {
+        "n": 60,
+        "median_chars": 9.5,
+        "share_le5_chars": 0.333,
+        "share_gt100_chars": 0.033,
+        "mean_lines": 1.7,
+        "keigo_rate": 0.033,
+        "assistantism_rate": 0.0,
+        "synthetic_template_rate": 0.0,
+        "placeholder_only_rate": 0.0,
+        "repeated_span_rate": 0.017,
+        "boku_rate": 0.033,
+        "laugh_w_rate": 0.033,
+        "char_bigram_jsd_vs_real": 0.6767
+      }
+    }
+  }
+}
