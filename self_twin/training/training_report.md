@@ -2,6 +2,17 @@
 
 ## 状態
 
+2026-11-22 低メモリ端末（8GBのMac、4GBのタブレット、スマホ）向けの小型版を選び、v2と同じ方法で学習を始めた（ownerの依頼）。
+
+- 候補の選び方: 学習前の素のモデルで、test split（学習に未使用）の本人の実際の返事240件を、本番system promptのもとで採点した（`evaluation/base_size_screen.py`、結果は`evaluation/base_size_screen.json`）。トークナイザが違うモデルを比べるため、トークンではなく1文字あたりのNLLを使う（低いほど本人の返事に近い）。Qwen3.5-4B `2.863`、2B `2.906`、0.8B `2.984`、MiniCPM5-2B `3.203`、MiniCPM5-1B `3.259`、LFM2.5-1.2B-JP `4.306`。4Bのトークンあたり値`4.751`は以前の測定（`4.826`、終端トークン込み）とほぼ一致した。
+- MiniCPM5は不採用。2Bでも0.8BのQwenより悪く、同じ日本語に要するトークン数も多い（返事0.64対0.60トークン/文字）。モデルカードの対応言語も英語・中国語だけ。K2-HorizonはWebLLM/MLCが対応しない独自アーキテクチャ（`trust_remote_code`が必要）なので測っていない。
+- LFM2.5-1.2B-JPは普通の日本語の文（30件の確認でQwen 0.8Bの`1.244`に対し`0.903`）では強いが、くだけたチャットでは丁寧なアシスタント口調が強く、素の状態では悪い。bf16/MPSとfp32/CPUで同じ値になり、数値誤差ではない。
+- 1,000例のパイロット（v2と同じ設定で件数だけ1,000）では、LFM2.5-1.2B-JP `2.911`、Qwen3.5-0.8B `2.956`になり、LFMが逆転した（素のQwen3.5-2Bと同程度）。学習時間はLFM 475秒、Qwen 0.8B 1,008秒。12件の生成はどちらも短いくだけた返事（中央値3〜4文字）で、意味はまだ通らないものが多い。1,000例だけの比較で、本学習後の優劣を保証するものではない。
+- 判断: 低メモリ枠はQwen3.5-0.8BではなくLFM2.5-1.2B-JP（revision `52b8b44`、LFM Open License v1.0）にする。WebLLMの既製ライブラリ（`LFM2.5-1.2B-Instruct-q4f16_1`）と同じ形で、必要VRAMの目安は約1.0 GB（Qwen3.5-0.8Bは1.6 GB）。8GBのMac向けはQwen3.5-2B（revision `15852e8`）。
+- 本学習: `training/run_small_v2.sh`でLFM、続けてQwen3.5-2Bを順に学習する。引数はv2（`adapter/experiment-r8-kobajin-clean-v2-memory/preflight.json`）と同じ（全17,405行、rank 8、LR 5e-5、cosine、1 epoch、max length 768、2,000 stepごとにcheckpoint、seed 42）。v2は`--pilot-examples 0`（全件）で学習されていたことをpreflightの比較で確認した。Qwen 0.8Bのpreflightは、モデル名とTRLのテンプレート名以外v2と一致した（最初の例の境界も279トークン）。LFMは1行だけ、本番system promptと返事だけで768トークンを超えるため除外され、17,399行になる。
+- `train.py`の変更: `--model-id`を追加した（`download_base_model.py`、`merge_adapter.py`も同じ）。LFMのチャットテンプレートはTRLが学習用に変換できないため、`{% generation %}`印だけを足した写し（`training/chat_templates/lfm2_5_jp_training.jinja`）を使う。学習前に、元のテンプレートと実データ400行で文字単位まで同じ出力になることを確認し、違えば止まる。トークナイザ単体が返す`BatchEncoding`を辞書と見なさず長さを誤る不具合と、context を全部削っても予算を超える行を`None`のまま残す不具合も直した（どちらもQwenの既存runには影響しない）。
+- 未完了: ブラウザ用の変換には、MLCに2026-11-16に入ったLFM2対応（commit `87a90ce`）が必要で、手元のMLC nightly（0.26.dev6）にはまだない。WebLLMへの変換・評価・公開は学習後に行う。
+
 2026-11-21 HFのv3を`v3/`に整理した（ownerの依頼）。
 
 - v3のWebLLMバンドル80ファイルはリポジトリ直下にあったため、`v3/`へサーバー側でコピーし、直下の分を削除した（commit [`0bc0bea`](https://huggingface.co/kobajin/kobajinAI/commit/0bc0bea14368ef51162f68ed5c545633ee567f15)）。`v3/`の80ファイルは`a2534a2`直下とサイズ・hashが一致。直下には`README.md`と`.gitattributes`だけが残る。model cardも更新した（commit [`a14137a`](https://huggingface.co/kobajin/kobajinAI/commit/a14137a19c83b0c1f0df4657556b776ecc0ad992)）。

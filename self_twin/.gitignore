@@ -42,3 +42,4 @@ evaluation/webllm_parity/*heldout*
 gguf/build/
 gguf/*.log
 gguf/hf-upload/
+adapter/*.log

@@ -12,8 +12,9 @@ import torch
 from peft import PeftModel
 from transformers import AutoModelForMultimodalLM, AutoProcessor
 
+from base_models import DEFAULT_MODEL_ID, RECEIPT_NAMES, receipt_path
+
 PROJECT = Path(__file__).resolve().parents[1]
-MODEL_ID = "Qwen/Qwen3.5-4B"
 CACHE_DIR = PROJECT / "hf_home" / "hub"
 
 
@@ -28,6 +29,7 @@ def sha256_file(path: Path) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--adapter", type=Path, required=True)
+    parser.add_argument("--model-id", default=DEFAULT_MODEL_ID, choices=sorted(RECEIPT_NAMES))
     parser.add_argument("--decision", type=Path, default=PROJECT / "evaluation" / "decision.json")
     parser.add_argument("--output", type=Path, default=PROJECT / "merged" / "qwen35_4b_self_twin")
     parser.add_argument(
@@ -42,6 +44,7 @@ def main() -> None:
         "selectable model; its evaluation is recorded in training_report.md, not gated here.",
     )
     args = parser.parse_args()
+    MODEL_ID = args.model_id
 
     decision = json.loads(args.decision.read_text(encoding="utf-8"))
     gate_passed = decision.get("status") == "passed" and decision.get("merge_allowed") is True
@@ -53,7 +56,7 @@ def main() -> None:
             "reason": "Owner policy (2026-11-21): every trained version is published to kobajin/kobajinAI "
             "and selectable on the site. Its evaluation is in self_twin/training/training_report.md; "
             "publishing it does not claim it is better than the base or other versions.",
-            "base_revision": json.loads((PROJECT / "training" / "base_checkpoint.json").read_text(encoding="utf-8"))["revision"],
+            "base_revision": json.loads(receipt_path(MODEL_ID).read_text(encoding="utf-8"))["revision"],
         }
     elif gate_passed:
         decided_adapter = Path(decision.get("adapter_path", "")).resolve()
@@ -78,8 +81,7 @@ def main() -> None:
     if not weight_path.is_file():
         raise SystemExit(f"Adapter weights not found: {weight_path}")
 
-    receipt_path = PROJECT / "training" / "base_checkpoint.json"
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt = json.loads(receipt_path(MODEL_ID).read_text(encoding="utf-8"))
     if receipt.get("repo_id") != MODEL_ID or receipt.get("quantization") is not None:
         raise SystemExit("Pinned official post-trained base receipt is missing or quantized")
     revision = receipt["revision"]

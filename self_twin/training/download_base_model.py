@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download and pin only the official post-trained Qwen3.5-4B checkpoint."""
+"""Download and pin an official post-trained Qwen3.5 checkpoint (4B by default)."""
 
 from __future__ import annotations
 
@@ -10,10 +10,10 @@ from pathlib import Path
 
 from huggingface_hub import HfApi, snapshot_download
 
+from base_models import DEFAULT_MODEL_ID, RECEIPT_NAMES, receipt_path, spec
+
 PROJECT = Path(__file__).resolve().parents[1]
-MODEL_ID = "Qwen/Qwen3.5-4B"
 CACHE_DIR = PROJECT / "hf_home" / "hub"
-RECEIPT = Path(__file__).resolve().parent / "base_checkpoint.json"
 
 
 def sha256_file(path: Path) -> str:
@@ -27,7 +27,10 @@ def sha256_file(path: Path) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--refresh", action="store_true", help="Allow resolving a newer main revision")
+    parser.add_argument("--model-id", default=DEFAULT_MODEL_ID, choices=sorted(RECEIPT_NAMES))
     args = parser.parse_args()
+    MODEL_ID = args.model_id
+    RECEIPT = receipt_path(MODEL_ID)
 
     old = None
     if RECEIPT.exists():
@@ -52,7 +55,7 @@ def main() -> None:
     )
     config_path = snapshot / "config.json"
     config = json.loads(config_path.read_text(encoding="utf-8"))
-    if config.get("model_type") != "qwen3_5":
+    if config.get("model_type") != spec(MODEL_ID)["model_type"]:
         raise SystemExit(f"Unexpected model_type in official checkpoint: {config.get('model_type')!r}")
     if config.get("quantization") or config.get("quantization_config"):
         raise SystemExit("Official checkpoint unexpectedly reports quantization; refusing to train")

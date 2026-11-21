@@ -1,0 +1,25 @@
+{
+  "repo_id": "LiquidAI/LFM2.5-1.2B-JP-202606",
+  "revision": "52b8b4475311a63bf839c6494f78f8ad59d13515",
+  "resolved_from": "official main at download time, then pinned to immutable commit",
+  "model_type": "lfm2",
+  "architectures": [
+    "Lfm2ForCausalLM"
+  ],
+  "post_trained_model": true,
+  "quantization": null,
+  "snapshot_path": "/Users/kobajin/repo/kobajin.com/self_twin/hf_home/hub/models--LiquidAI--LFM2.5-1.2B-JP-202606/snapshots/52b8b4475311a63bf839c6494f78f8ad59d13515",
+  "config_sha256": "df8dac1ebef28c06a010be6353e7dd2d0a3ff9c2ca23591bb8ced252d74510a1",
+  "tokenizer_sha256": "d7a0ab0fc22e41ec8c6d7450a9ff9ce40e196ec5e5a2fa6a2105e064e0514ed7",
+  "chat_template_sha256": "89e790f027916b5a2bca145a6a8454e06ffc7a5043bf3b6d97829aff86bb543f",
+  "chat_template_has_generation_markers": false,
+  "safetensors_files": [
+    {
+      "name": "model.safetensors",
+      "bytes": 2340697936
+    }
+  ],
+  "safetensors_total_bytes": 2340697936,
+  "downloaded_locally": true,
+  "chat_history_uploaded": false
+}

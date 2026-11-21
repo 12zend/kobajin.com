@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guarded BF16 LoRA training entry point for a pinned Qwen3.5-4B checkpoint.
+"""Guarded BF16 LoRA training entry point for a pinned Qwen3.5 checkpoint (4B by default).
 
 This script intentionally aborts before training when the checkpoint, library
 versions, text-layer targets, or assistant-only loss mask are not verified.
@@ -15,7 +15,8 @@ import re
 from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[1]
-MODEL_ID = "Qwen/Qwen3.5-4B"
+from base_models import DEFAULT_MODEL_ID, RECEIPT_NAMES, load_base, receipt_path, spec, text_tokenizer, training_chat_template
+
 CACHE_DIR = PROJECT / "hf_home" / "hub"
 
 
@@ -28,7 +29,8 @@ def token_ids(processor, messages, add_generation_prompt=False, chat_template=No
         chat_template=chat_template,
         enable_thinking=enable_thinking,
     )
-    if isinstance(result, dict):
+    # A processor returns a dict, a tokenizer a BatchEncoding (a Mapping, not a dict).
+    if hasattr(result, "keys") and "input_ids" in result:
         result = result["input_ids"]
     if hasattr(result, "tolist"):
         result = result.tolist()
@@ -62,7 +64,7 @@ def context_segments(text: str) -> list[tuple[str, bool]]:
 
 def fit_context_to_length(processor, messages, max_length):
     fitted = [dict(message) for message in messages]
-    target_tokens = len(processor.tokenizer.encode(fitted[-1]["content"]))
+    target_tokens = len(text_tokenizer(processor).encode(fitted[-1]["content"]))
     if target_tokens > max_length - 64:
         return None, {"dropped_long_target": True, "dropped_context_entries": 0, "dropped_reply": False}
     original_context = fitted[1]["content"]
@@ -87,6 +89,7 @@ def fit_context_to_length(processor, messages, max_length):
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--revision", required=True, help="Pinned official checkpoint revision")
+    parser.add_argument("--model-id", default=DEFAULT_MODEL_ID, choices=sorted(RECEIPT_NAMES))
     parser.add_argument("--rank", type=int, choices=(8, 16, 32), required=True)
     parser.add_argument("--output-dir", type=Path, required=True, help="Separate experiment adapter/checkpoint path")
     parser.add_argument("--pilot-examples", type=int, default=1000, help="Use 0 for the full training split")
@@ -121,9 +124,10 @@ def main() -> None:
     parser.add_argument("--lr-scheduler", default="linear", choices=("linear", "cosine", "constant_with_warmup"))
     parser.add_argument("--resume", action="store_true", help="Resume from the newest checkpoint in --output-dir")
     args = parser.parse_args()
+    MODEL_ID = args.model_id
 
     if args.revision in {"main", "latest", "PIN_EXACT_OFFICIAL_REVISION_BEFORE_LOAD"}:
-        raise SystemExit("Pass an immutable official Qwen/Qwen3.5-4B revision; moving branches are not accepted")
+        raise SystemExit(f"Pass an immutable official {args.model_id} revision; moving branches are not accepted")
     if args.pilot_examples < 0:
         raise SystemExit("--pilot-examples must be non-negative")
     if args.epochs <= 0 or args.learning_rate <= 0:
@@ -132,10 +136,10 @@ def main() -> None:
         raise SystemExit("--low-weight-sample-rate must be between 0 and 1")
     if not 0.0 <= args.synthetic_share <= 1.0:
         raise SystemExit("--synthetic-share must be between 0 and 1")
-    receipt_path = Path(__file__).resolve().with_name("base_checkpoint.json")
-    if not receipt_path.exists():
-        raise SystemExit("Missing training/base_checkpoint.json; pin and audit the official checkpoint first")
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt_file = receipt_path(MODEL_ID)
+    if not receipt_file.exists():
+        raise SystemExit(f"Missing training/{receipt_file.name}; pin and audit the official checkpoint first")
+    receipt = json.loads(receipt_file.read_text(encoding="utf-8"))
     if receipt.get("repo_id") != MODEL_ID or receipt.get("revision") != args.revision:
         raise SystemExit("Checkpoint receipt does not match the requested official repo and revision")
     if receipt.get("quantization") is not None or not receipt.get("post_trained_model"):
@@ -145,7 +149,7 @@ def main() -> None:
         import torch
         from datasets import Dataset
         from peft import LoraConfig, get_peft_model
-        from transformers import AutoConfig, AutoModelForMultimodalLM, AutoProcessor, set_seed
+        from transformers import AutoConfig, set_seed
         from trl import SFTConfig, SFTTrainer
     except ImportError as error:
         raise SystemExit(f"Training dependencies are missing: {error}") from error
@@ -157,38 +161,31 @@ def main() -> None:
         MODEL_ID, revision=args.revision, cache_dir=CACHE_DIR, local_files_only=True
     )
     model_type = getattr(config, "model_type", None)
-    if model_type != "qwen3_5":
-        raise SystemExit(f"Expected model_type=qwen3_5, got {model_type!r}")
+    expected_type = spec(MODEL_ID)["model_type"]
+    if model_type != expected_type:
+        raise SystemExit(f"Expected model_type={expected_type}, got {model_type!r}")
     quantization = getattr(config, "quantization_config", None)
     if quantization:
         raise SystemExit("Quantized checkpoints are not accepted; use the pinned official BF16 Safetensors model")
 
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     if device == "cpu":
-        raise SystemExit("No CUDA or MPS device is available; refusing 4B fine-tuning on CPU")
+        raise SystemExit("No CUDA or MPS device is available; refusing fine-tuning on CPU")
     if not torch.cuda.is_available() and device == "mps":
         # MPS is a local fallback; verify BF16 and all model kernels before pilot training.
         if not hasattr(torch.backends, "mps"):
             raise SystemExit("This PyTorch build has no MPS backend")
 
     dtype = torch.bfloat16
-    processor = AutoProcessor.from_pretrained(
-        MODEL_ID, revision=args.revision, cache_dir=CACHE_DIR, local_files_only=True
-    )
-    model = AutoModelForMultimodalLM.from_pretrained(
-        MODEL_ID,
-        revision=args.revision,
-        cache_dir=CACHE_DIR,
-        dtype=dtype,
-        low_cpu_mem_usage=True,
-        local_files_only=True,
-    )
+    model, processor = load_base(MODEL_ID, args.revision, CACHE_DIR, dtype)
+    marked_template = training_chat_template(MODEL_ID)
     model.to(device)
     model.config.use_cache = False
     model.gradient_checkpointing_enable()
 
     excluded_fragments = ("visual", "vision", "image", "video", "lm_head", "embed")
-    language_fragments = ("language_model", "text_model")
+    # A multimodal checkpoint also holds vision Linear layers; train only the language side.
+    language_fragments = ("language_model", "text_model") if spec(MODEL_ID)["kind"] == "multimodal" else ("",)
     target_modules = [
         name
         for name, module in model.named_modules()
@@ -297,7 +294,9 @@ def main() -> None:
     dropped_reply_contexts = 0
     for row in selected_train_rows:
         fitted, fit_report = fit_context_to_length(processor, row["messages"], max_length)
-        if fit_report["dropped_long_target"]:
+        # fitted is also None when the system prompt and reply alone exceed the
+        # budget with every context entry removed; skip those rows the same way.
+        if fit_report["dropped_long_target"] or fitted is None:
             dropped_long_targets.extend(row["metadata"]["message_ids"])
             continue
         trimmed_context_entries += fit_report["dropped_context_entries"]
@@ -319,7 +318,7 @@ def main() -> None:
     fitted_valid_rows = []
     for row in valid_rows:
         fitted, fit_report = fit_context_to_length(processor, row["messages"], max_length)
-        if fit_report["dropped_long_target"]:
+        if fit_report["dropped_long_target"] or fitted is None:
             raise SystemExit("A validation answer exceeds the chosen sequence budget; review max length")
         fitted_valid_rows.append(
             {"messages": fitted, "chat_template_kwargs": {"enable_thinking": False}}
@@ -422,6 +421,30 @@ def main() -> None:
         data_seed=args.seed,
         packing=False,
     )
+    if marked_template is not None:
+        # The model's own template has no {% generation %} markers and TRL cannot
+        # patch it, so use the marked copy, but only if it renders every checked
+        # row exactly as the original does (full conversation and reply prompt).
+        original_template = processor.chat_template
+        for row in train_rows[:300] + valid_rows[:100]:
+            messages = row["messages"]
+            for rendered_messages, generation in ((messages, False), (messages[:-1], True)):
+                original = processor.apply_chat_template(
+                    rendered_messages, tokenize=False, add_generation_prompt=generation, enable_thinking=False
+                )
+                marked = processor.apply_chat_template(
+                    rendered_messages,
+                    tokenize=False,
+                    add_generation_prompt=generation,
+                    enable_thinking=False,
+                    chat_template=marked_template,
+                )
+                if marked != original:
+                    raise SystemExit("The marked training chat template renders differently from the model's own")
+        processor.chat_template = marked_template
+        run_report["original_chat_template_sha256"] = __import__("hashlib").sha256(
+            original_template.encode("utf-8")
+        ).hexdigest()
     trainer = SFTTrainer(
         model=model,
         args=training_args,
@@ -464,7 +487,7 @@ def main() -> None:
     rendered = _tokenize(
         processor,
         messages,
-        chat_template=trainer.chat_template,
+        chat_template=trainer.chat_template or processor.chat_template,
         return_assistant_tokens_mask=True,
         enable_thinking=False,
     )
@@ -486,7 +509,7 @@ def main() -> None:
         getattr(trainer, "processing_class", processor),
         messages[:-1],
         add_generation_prompt=True,
-        chat_template=trainer.chat_template,
+        chat_template=trainer.chat_template or processor.chat_template,
         enable_thinking=False,
     )
     if first_active != len(prompt_ids):
@@ -497,12 +520,12 @@ def main() -> None:
     run_report.update(
         {
             "assistant_mask_verified": True,
-            "assistant_mask_source": "TRL Qwen3.5 training chat template and collator labels compared token-for-token",
+            "assistant_mask_source": "TRL training chat template (or the checked marked copy) and collator labels compared token-for-token",
             "assistant_supervised_tokens": int(active_positions.numel()),
             "first_supervised_token_index": first_active,
             "rendered_prompt_token_count": len(prompt_ids),
             "training_chat_template_sha256": __import__("hashlib").sha256(
-                trainer.chat_template.encode("utf-8")
+                (trainer.chat_template or processor.chat_template).encode("utf-8")
             ).hexdigest(),
             "training_tokenized_sequence_length_p95": sorted(tokenized_lengths)[
                 math.ceil(0.95 * len(tokenized_lengths)) - 1

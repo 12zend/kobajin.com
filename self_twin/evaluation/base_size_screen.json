@@ -1,0 +1,106 @@
+{
+  "rows_scored": 240,
+  "target_chars": 6110,
+  "seed": 20261120,
+  "system_prompt": "prod",
+  "models": {
+    "qwen35-4b": {
+      "repo": "Qwen/Qwen3.5-4B",
+      "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+      "parameters": 4539265536,
+      "nll_per_char": 2.8631,
+      "bits_per_char": 4.1305,
+      "median_row_nll_per_char": 3.297,
+      "nll_per_token": 4.751,
+      "reply_tokens_per_char": 0.6026,
+      "prompt_tokens_mean": 567.8,
+      "prompt_tokens_per_char": 0.6514
+    },
+    "qwen35-0.8b": {
+      "repo": "Qwen/Qwen3.5-0.8B",
+      "revision": "2fc06364715b967f1860aea9cf38778875588b17",
+      "parameters": 852985920,
+      "nll_per_char": 2.9842,
+      "bits_per_char": 4.3053,
+      "median_row_nll_per_char": 3.428,
+      "nll_per_token": 4.9521,
+      "reply_tokens_per_char": 0.6026,
+      "prompt_tokens_mean": 567.8,
+      "prompt_tokens_per_char": 0.6514
+    },
+    "qwen35-2b": {
+      "repo": "Qwen/Qwen3.5-2B",
+      "revision": "15852e8c16360a2fea060d615a32b45270f8a8fc",
+      "parameters": 2213241664,
+      "nll_per_char": 2.9057,
+      "bits_per_char": 4.192,
+      "median_row_nll_per_char": 3.3039,
+      "nll_per_token": 4.8218,
+      "reply_tokens_per_char": 0.6026,
+      "prompt_tokens_mean": 567.8,
+      "prompt_tokens_per_char": 0.6514
+    },
+    "minicpm5-2b": {
+      "repo": "openbmb/MiniCPM5-2B",
+      "revision": "42433e90dad95123ab87729fd7011e7110629556",
+      "parameters": 2516756480,
+      "nll_per_char": 3.2025,
+      "bits_per_char": 4.6203,
+      "median_row_nll_per_char": 3.7541,
+      "nll_per_token": 4.993,
+      "reply_tokens_per_char": 0.6414,
+      "prompt_tokens_mean": 588.1,
+      "prompt_tokens_per_char": 0.6749
+    },
+    "minicpm5-1b": {
+      "repo": "openbmb/MiniCPM5-1B",
+      "revision": "ac83f813ba7da263c51a9f3ec37c2072597e54af",
+      "parameters": 1080632832,
+      "nll_per_char": 3.2592,
+      "bits_per_char": 4.702,
+      "median_row_nll_per_char": 3.7475,
+      "nll_per_token": 5.0813,
+      "reply_tokens_per_char": 0.6414,
+      "prompt_tokens_mean": 588.1,
+      "prompt_tokens_per_char": 0.6749
+    },
+    "lfm25-1.2b-jp": {
+      "repo": "LiquidAI/LFM2.5-1.2B-JP-202606",
+      "revision": "52b8b4475311a63bf839c6494f78f8ad59d13515",
+      "parameters": 1170340608,
+      "nll_per_char": 4.3056,
+      "bits_per_char": 6.2116,
+      "median_row_nll_per_char": 4.8823,
+      "nll_per_token": 6.4039,
+      "reply_tokens_per_char": 0.6723,
+      "prompt_tokens_mean": 596.4,
+      "prompt_tokens_per_char": 0.6844
+    },
+    "pilot1000-qwen35-0.8b": {
+      "repo": "Qwen/Qwen3.5-0.8B",
+      "revision": "2fc06364715b967f1860aea9cf38778875588b17",
+      "adapter": "adapter/pilot-r8-v2recipe-1000-qwen35-0.8b/adapter",
+      "parameters": 858397248,
+      "nll_per_char": 2.9557,
+      "bits_per_char": 4.2641,
+      "median_row_nll_per_char": 3.2199,
+      "nll_per_token": 4.9047,
+      "reply_tokens_per_char": 0.6026,
+      "prompt_tokens_mean": 567.8,
+      "prompt_tokens_per_char": 0.6514
+    },
+    "pilot1000-lfm25-1.2b-jp": {
+      "repo": "LiquidAI/LFM2.5-1.2B-JP-202606",
+      "revision": "52b8b4475311a63bf839c6494f78f8ad59d13515",
+      "adapter": "adapter/pilot-r8-v2recipe-1000-lfm25-jp/adapter",
+      "parameters": 1175894784,
+      "nll_per_char": 2.911,
+      "bits_per_char": 4.1997,
+      "median_row_nll_per_char": 3.152,
+      "nll_per_token": 4.3297,
+      "reply_tokens_per_char": 0.6723,
+      "prompt_tokens_mean": 596.4,
+      "prompt_tokens_per_char": 0.6844
+    }
+  }
+}
