@@ -61,7 +61,7 @@ export function setupPostControls() {
     const article = event.target.closest(".post");
     if (!article) return;
     const post = posts.get(article.dataset.id);
-    const pill = event.target.closest(".rx");
+    const pill = event.target.closest(".rx[data-emoji]");
     if (pill) { react(post, pill.dataset.emoji, VISITOR.id, { toggle: true }); return; }
     const add = event.target.closest("[data-add]");
     if (add) { openPicker(add, (emoji) => react(post, emoji, VISITOR.id)); return; }

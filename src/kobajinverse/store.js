@@ -21,8 +21,17 @@ function serialize(post) {
     reactions: [...post.reactions].map(([emoji, who]) => [emoji, [...who]]),
     reposts: [...post.reposts],
     bookmarked: post.bookmarked,
-    replies: post.replies.map(({ authorId, toId, text, createdAt, source }) => ({ authorId, toId, text, createdAt, source: source || "" })),
+    replies: post.replies.map(({ authorId, toId, text, createdAt, source, reactions }) => ({ authorId, toId, text, createdAt, source: source || "", ...(reactions ? { reactions } : {}) })),
   };
+}
+
+// Reactions on a reply: { emoji: [accountId, ...] }, known accounts only.
+function reviveReply(reply) {
+  const reactions = Object.fromEntries(Object.entries(reply.reactions && typeof reply.reactions === "object" ? reply.reactions : {})
+    .map(([emoji, who]) => [emoji, Array.isArray(who) ? who.filter(known) : []])
+    .filter(([, who]) => who.length));
+  const { reactions: _, ...rest } = reply;
+  return Object.keys(reactions).length ? { ...rest, reactions } : rest;
 }
 
 function revive(data) {
@@ -36,7 +45,7 @@ function revive(data) {
     reactions: new Map((data.reactions || []).map(([emoji, who]) => [emoji, new Set((who || []).filter(known))]).filter(([, who]) => who.size)),
     reposts: new Set((data.reposts || []).filter(known)),
     bookmarked: Boolean(data.bookmarked),
-    replies: (data.replies || []).filter((reply) => known(reply.authorId) && known(reply.toId) && typeof reply.text === "string"),
+    replies: (data.replies || []).filter((reply) => known(reply.authorId) && known(reply.toId) && typeof reply.text === "string").map(reviveReply),
     drafts: [],
     typing: new Set(),
   };

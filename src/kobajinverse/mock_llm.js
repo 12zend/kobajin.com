@@ -1,3 +1,4 @@
+import { GUESS, QUESTION } from "./reply_decision.js";
 import { HARSH } from "./safety.js";
 import { chars, pick, rand, shuffle, sleep } from "./util.js";
 
@@ -126,8 +127,6 @@ export function createMockLLM() {
   // question gets an answer (by its question word), cheers get thanks,
   // and agreement gets agreement, never another 「たしかに？」. Answers
   // stay vague, since the mock knows nothing about kobajin's plans.
-  const QUESTION = /[?？]|なんで|なぜ|どう|どこ|いつ(?!も)|だれ|誰|なに|何|なんな|なんです|なんや(?!ろ)|どっち|どれ|どんな/;
-  const GUESS = /とか[?？]|って(こと)?[?？]|(ってこと|のこと|ですか|すか)[?？]?$|みたいな[?？]/;
   const ANSWERS = [
     [/どうした|どしたん|大丈夫/, ["なんでもない", "いや別に", "ちょっと思っただけ", "大丈夫"]],
     [/なんで(?!す)|なぜ|何で|どうして/, ["なんとなく", "そういう気分", "流れで", "特に理由はない", "気分の問題"]],

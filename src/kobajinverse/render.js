@@ -59,6 +59,15 @@ function reactionsHtml(post, bumped) {
   return pills ? `${pills}<button class="rx-add" type="button" data-add aria-label="リアクションを追加">${icon("react")}</button>` : "";
 }
 
+// Reactions on one reply (actions.js reactToReply). Display only.
+function replyReactionsHtml(reply) {
+  const pills = Object.entries(reply.reactions || {}).filter(([, who]) => who.length).map(([emoji, who]) => {
+    const label = `${who.map((id) => ACCOUNTS[id].name).join("、")} が ${emoji} でリアクション`;
+    return `<span class="rx sm" role="img" data-who="${escapeHtml(label)}" aria-label="${escapeHtml(`${emoji} ${who.length}件。${label}`)}"><span>${emoji}</span><span class="count">${who.length}</span></span>`;
+  }).join("");
+  return pills ? `<div class="reactions reply-rx">${pills}</div>` : "";
+}
+
 function replyHtml(post, reply, index, fresh) {
   const account = ACCOUNTS[reply.authorId];
   return `<div class="reply${fresh ? " enter" : ""}">
@@ -67,6 +76,7 @@ function replyHtml(post, reply, index, fresh) {
       ${metaHtml(account, reply.createdAt, reply.source)}
       <div class="reply-to">返信先: <b>@${ACCOUNTS[reply.toId].handle}</b>さん</div>
       <p class="post-text">${linkTags(reply.text)}</p>
+      ${replyReactionsHtml(reply)}
       <button class="reply-act" type="button" data-reply-to="${index}" aria-label="${escapeHtml(account.name)}に返信">${icon("reply")}</button>
     </div>
   </div>`;

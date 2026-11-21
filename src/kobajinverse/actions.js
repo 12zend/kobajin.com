@@ -1,5 +1,7 @@
 import { ACCOUNTS, ALTS, SELF, VISITOR } from "./accounts.js";
 import { PRIORITY, brain } from "./brain.js";
+import { REACTION_EMOJI } from "./prompts.js";
+import { replyNeed } from "./reply_decision.js";
 import { say } from "./dom.js";
 import { notify } from "./notifications.js";
 import { refresh, renderUsers } from "./render.js";
@@ -8,6 +10,11 @@ import { rand, randInt, shuffle, sleep } from "./util.js";
 
 // Actions: reactions, reposts, typing, and replies, and how the kobajins
 // answer what the visitor writes and talk among themselves.
+//
+// Not every line gets an answer. replyNeed() (reply_decision.js) tells a
+// line that asks for one (a question, a request, a greeting, something
+// new) from one that closes the exchange (わかる, ありがと, 草, 👍). The
+// second kind usually gets a reaction on the reply instead.
 
 // Anything a kobajin does to the visitor's post or reply is a
 // notification (notifications.js).
@@ -50,6 +57,30 @@ function addReply(post, accountId, text, toId = post.authorId, source = "") {
   if (toId === VISITOR.id && accountId !== VISITOR.id) notify({ type: "reply", post, actorId: accountId, text });
   refresh(post, { freshReply: post.replies.length - 1 });
   return reply;
+}
+
+// A reaction on one reply in a thread, e.g. a kobajin acknowledging the
+// visitor's 「わかる」 without answering it. reply.reactions maps an emoji
+// to the accounts that used it.
+export function reactToReply(post, reply, emoji, accountId) {
+  reply.reactions ||= {};
+  const who = reply.reactions[emoji] ||= [];
+  if (who.includes(accountId)) return;
+  who.push(accountId);
+  if (reply.authorId === VISITOR.id && accountId !== VISITOR.id) notify({ type: "reaction", post, actorId: accountId, emoji, text: reply.text });
+  refresh(post);
+}
+
+// The emoji for a line that gets no answer: one the line itself used, or
+// one that fits its kind, from the reaction list.
+function ackEmoji(need) {
+  const fits = need.emoji.filter((emoji) => REACTION_EMOJI.includes(emoji));
+  return fits.length ? fits[0] : "👍";
+}
+
+function acknowledge(post, reply, account, need) {
+  if (import.meta.env.DEV) console.debug(`[reply] ${account.handle} reacts instead of replying (${need.kind}):`, reply.text);
+  sleep(rand(900, 2200)).then(() => reactToReply(post, reply, ackEmoji(need), account.id)).catch(console.error);
 }
 
 // Mentions are addressing, not content: the model should not echo a handle.
@@ -113,28 +144,46 @@ export function choreograph(post) {
     say(`kobajinたちが ${fans.length} 件 👍 しました`);
   })().catch(console.error);
 
-  // Anyone the post @mentions answers first.
+  // Anyone the post @mentions answers first. A post that asks for no
+  // answer (草, ありがと, 👍) gets one reply at most; the reactions above
+  // already answer it.
   const mentioned = mentionedBots(post.text);
-  const others = shuffle(ALTS.filter((alt) => !mentioned.includes(alt))).slice(0, Math.max(mentioned.length ? 1 : 2, randInt(2, 3) - mentioned.length));
+  const need = replyNeed(post.text);
+  const wanted = need.need === "reply"
+    ? Math.max(mentioned.length ? 1 : 2, randInt(2, 3) - mentioned.length)
+    : Number(Math.random() < need.chance);
+  const others = shuffle(ALTS.filter((alt) => !mentioned.includes(alt))).slice(0, wanted);
   [...mentioned, ...others].forEach((account, index) => {
     replyAs(post, account, rand(1800, 3000) + index * rand(1400, 2600)).catch(console.error);
   });
 }
 
-// The visitor replies in a thread. Whoever they answered replies back;
-// answering their own post brings in one or two others instead.
+// The visitor replies in a thread. Whoever they answered replies back
+// when the line asks for an answer; when it does not (わかる, ありがと),
+// they usually react to it instead. Answering their own post brings in
+// one or two others, or, for such a line, at most one. Anyone the reply
+// @mentions always answers.
 export function visitorReply(post, toId, parentText, text) {
-  addReply(post, VISITOR.id, text, toId);
+  const added = addReply(post, VISITOR.id, text, toId);
   const reply = { authorId: VISITOR.id, toId, text, parentText };
   const target = ACCOUNTS[toId];
   const mentioned = mentionedBots(text).filter((account) => account.id !== toId);
-  const responders = target.visitor
-    ? [...mentioned, ...shuffle(ALTS.filter((alt) => !mentioned.includes(alt)))].slice(0, Math.max(mentioned.length, randInt(1, 2)))
-    : [target, ...mentioned];
+  const need = replyNeed(text);
+  const answers = Math.random() < need.chance;
+  let responders;
+  if (target.visitor) {
+    const others = shuffle(ALTS.filter((alt) => !mentioned.includes(alt)));
+    const wanted = need.need === "reply" ? randInt(1, 2) : Number(answers);
+    responders = [...mentioned, ...others].slice(0, Math.max(mentioned.length, wanted));
+    if (!responders.length && Math.random() < 0.6) acknowledge(post, added, others[0], need);
+  } else {
+    responders = answers ? [target, ...mentioned] : mentioned;
+    if (!answers) acknowledge(post, added, target, need);
+  }
   responders.forEach((account, index) => {
     replyAs(post, account, rand(1500, 2800) + index * rand(1400, 2600), reply).catch(console.error);
   });
-  if (!target.visitor && Math.random() < 0.6) {
+  if (!target.visitor && answers && Math.random() < 0.6) {
     Promise.all([brain.react(withoutMentions(text)), sleep(rand(900, 2000))])
       .then(([emoji]) => react(post, emoji, toId))
       .catch(console.error);
@@ -154,16 +203,21 @@ export async function banter(post, { first = rand(4000, 9000) } = {}) {
   let last = { reply: opening, parentText: post.text };
   let speakers = [author, replier];
   // Each round: the one who was answered talks back, with fading odds.
+  // A question, request, or greeting is always answered; a line that
+  // closes the exchange (せやろ, ありがと) mostly ends it.
   for (const chance of [0.7, 0.45, 0.25]) {
-    if (Math.random() > chance) break;
+    const need = replyNeed(last.reply.text);
+    const odds = need.need === "optional" ? chance * need.chance : need.kind === "statement" ? chance : 1;
+    if (Math.random() > odds) break;
     const [next] = speakers;
     const answer = await replyAs(post, next, rand(2500, 6000), { ...last.reply, parentText: last.parentText }, PRIORITY.background);
     if (!answer) break;
     last = { reply: answer, parentText: last.reply.text };
     speakers = [speakers[1], speakers[0]];
   }
-  // Now and then someone else chimes in on the last line.
-  if (Math.random() < 0.25) {
+  // Now and then someone else chimes in on the last line, rarely after
+  // one that closed the exchange.
+  if (Math.random() < (replyNeed(last.reply.text).need === "reply" ? 0.25 : 0.08)) {
     const outsider = shuffle(ALTS.filter((alt) => alt.id !== author.id && alt.id !== replier.id))[0];
     await replyAs(post, outsider, rand(3000, 7000), { ...last.reply, parentText: last.parentText }, PRIORITY.background);
   }

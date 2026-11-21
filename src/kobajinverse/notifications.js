@@ -28,7 +28,7 @@ export const onNotify = (listener) => listeners.add(listener);
 const changed = () => { save(); listeners.forEach((listener) => listener()); };
 
 export function notify({ type, post, actorId, emoji = "", text = "" }) {
-  const top = notes.find((note) => !note.read && note.type === type && note.postId === post.id && note.emoji === emoji);
+  const top = notes.find((note) => !note.read && note.type === type && note.postId === post.id && note.emoji === emoji && note.text === text);
   if (top && type !== "reply") {
     if (!top.actors.includes(actorId)) top.actors.unshift(actorId);
     top.at = Date.now();
@@ -52,7 +52,7 @@ function who(actors) {
 }
 
 function line(note) {
-  if (note.type === "reaction") return `${who(note.actors)} が ${note.emoji} でリアクションしました`;
+  if (note.type === "reaction") return `${who(note.actors)} が${note.text ? "あなたの返信に" : ""} ${note.emoji} でリアクションしました`;
   if (note.type === "repost") return `${who(note.actors)} がリポストしました`;
   return `${who(note.actors)} が返信しました`;
 }
@@ -70,7 +70,7 @@ export function renderNotifications(avatarHtml, iconHtml) {
       <span class="note-body">
         <span class="note-faces">${note.actors.slice(0, 5).map((id) => avatarHtml(ACCOUNTS[id], "xs")).join("")}</span>
         <span class="note-line">${line(note)}</span>
-        ${note.type === "reply" ? `<span class="note-reply">${escapeHtml(note.text)}</span>` : ""}
+        ${note.text ? `<span class="note-reply">${escapeHtml(note.text)}</span>` : ""}
         <span class="note-post">${escapeHtml(note.postText)}</span>
       </span>
     </button>`).join("");

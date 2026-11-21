@@ -1,5 +1,6 @@
 import { llm } from "./llm.js";
 import { POST_KINDS, REACTION_EMOJI } from "./prompts.js";
+import { DETAIL } from "./reply_decision.js";
 import { HARSH, rejectReason } from "./safety.js";
 import { chars, pick, sleep } from "./util.js";
 
@@ -88,7 +89,6 @@ async function generate(priority, task, input, { maxChars, recent = () => [], ec
   return { text: "", source: llm.source };
 }
 
-const DETAIL = /具体|詳し|くわし|kwsk|詳細|例えば|たとえば|例は|例を|どういう(こと|意味)|どゆこと|どういうことや|つまり|説明して|掘り下げ|もっと(教えて|聞かせて|言って)|もう(少し|ちょい|ちょっと)(詳|くわ|教|説明)/i;
 
 const recentKinds = [];
 

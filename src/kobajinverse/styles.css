@@ -169,6 +169,9 @@ svg.i { width: 1.25em; height: 1.25em; fill: none; stroke: currentColor; stroke-
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6); opacity: 0; pointer-events: none; transition: opacity 0.12s; z-index: 3;
 }
 .rx:hover::after, .rx:focus-visible::after { opacity: 1; }
+.rx.sm { height: 22px; padding: 0 6px; gap: 4px; font-size: 12px; cursor: default; }
+.rx.sm .count { font-size: 12px; }
+.reply-rx { margin-top: 4px; }
 .rx-add { display: inline-grid; place-items: center; width: 30px; height: 26px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--muted); }
 .rx-add:hover { background: var(--dc-pill); border-color: var(--dc-pill-border); color: var(--text); }
 
