@@ -192,6 +192,18 @@
       .reply-body { min-width: 0; flex: 1; }
       .reply-to { color: var(--muted); font-size: 13px; }
       .reply-to b { color: var(--blue); font-weight: 400; }
+      .reply-act { display: inline-flex; align-items: center; gap: 2px; margin: 2px 0 0 -7px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 13px; }
+      .reply-act .i { box-sizing: content-box; padding: 6px; border-radius: 50%; width: 16px; height: 16px; }
+      .reply-act:hover { color: var(--blue); }
+      .reply-act:hover .i { background: var(--blue-soft); }
+      .reply-box { display: flex; gap: 10px; padding: 8px 0 10px 14px; }
+      .reply-box-body { flex: 1; min-width: 0; }
+      .reply-box textarea { display: block; width: 100%; min-height: 32px; max-height: 200px; padding: 4px 0; border: 0; resize: none; background: none; font-size: 15px; line-height: 1.4; outline: none; }
+      .reply-box textarea::placeholder { color: var(--muted); }
+      .reply-box-tools { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+      .reply-box-tools .cancel { height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--muted); }
+      .reply-box-tools .cancel:hover { color: var(--text); }
+      .reply-box .post-button { height: 32px; padding: 0 14px; }
       .typing { display: flex; align-items: center; gap: 8px; padding: 6px 0 2px 14px; color: var(--muted); font-size: 13px; }
       .typing b { color: var(--text); font-weight: 600; }
       .dots { display: inline-flex; gap: 3px; }
@@ -449,7 +461,8 @@
         },
         reply: {
           system: "SNSで他人の投稿に返信する。10文字以内で、相手の言葉を拾って短く反応する。",
-          user: ({ text, others }) => `投稿: ${text}${others.length ? `\nほかの返信（同じことは言わない）: ${others.join(" / ")}` : ""}`,
+          // `parent` is set when the text is itself a reply: what it answers.
+          user: ({ text, parent, others }) => `${parent ? `元の発言: ${parent}\nそれへの返信: ${text}\nこの返信に返す。` : `投稿: ${text}`}${others.length ? `\nほかの返信（同じことは言わない）: ${others.join(" / ")}` : ""}`,
           decoding: { temperature: 0.8, top_p: 1, repetition_penalty: 1.12, max_tokens: 20 },
         },
         judge: {
@@ -536,7 +549,7 @@
         const used = [];
 
         function keyword(text) {
-          const bare = text.replace(/[\s?？!！。、.,…ー〜~wｗ]+$/g, "").replace(/^[\s@#＃]+/, "");
+          const bare = text.replace(/@[A-Za-z0-9_]+/g, "").replace(/[\s?？!！。、.,…ー〜~wｗ]+$/g, "").replace(/^[\s#＃]+/, "");
           // A short post is its own keyword when it is one word: no kana
           // (過密, ラーメン) or a lone adjective (ねむい, 眠い).
           const oneWord = !/[ぁ-ん]/.test(bare) || (/^[一-龠々ぁ-ん]+い$/.test(bare) && !/[がをにはでとも]/.test(bare.slice(1, -1)));
@@ -639,8 +652,8 @@
         },
         // `others` is read when the job runs, so replies queued together still
         // see the ones that finished before them.
-        async reply(text, others) {
-          const raw = await enqueue(PRIORITY.visitor, () => llm.complete("reply", { text, others: others() }));
+        async reply({ text, parent = null }, others) {
+          const raw = await enqueue(PRIORITY.visitor, () => llm.complete("reply", { text, parent, others: others() }));
           return clean(raw, 10);
         },
         async judge(text) {
@@ -738,14 +751,15 @@
         return pills ? `${pills}<button class="rx-add" type="button" data-add aria-label="リアクションを追加">${icon("react")}</button>` : "";
       }
 
-      function replyHtml(post, reply, fresh) {
+      function replyHtml(post, reply, index, fresh) {
         const account = ACCOUNTS[reply.authorId];
         return `<div class="reply${fresh ? " enter" : ""}">
           ${avatar(account, "sm")}
           <div class="reply-body">
             ${metaHtml(account, reply.createdAt)}
-            <div class="reply-to">返信先: <b>@${ACCOUNTS[post.authorId].handle}</b>さん</div>
+            <div class="reply-to">返信先: <b>@${ACCOUNTS[reply.toId].handle}</b>さん</div>
             <p class="post-text">${linkTags(reply.text)}</p>
+            <button class="reply-act" type="button" data-reply-to="${index}" aria-label="${escapeHtml(account.name)}に返信">${icon("reply")}</button>
           </div>
         </div>`;
       }
@@ -756,14 +770,20 @@
         return `<div class="typing"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span>${names.join("、")} が入力中…</span></div>`;
       }
 
-      function postHtml(post, { bumped = new Set(), freshReply = -1 } = {}) {
+      // refresh() redraws only .post-content. The reply box lives in
+      // .reply-slot, so arriving reactions never reset what the visitor is
+      // typing (or break IME input).
+      function postHtml(post) {
+        return `${avatar(ACCOUNTS[post.authorId])}
+          <div class="post-main"><div class="post-content">${postContentHtml(post)}</div><div class="reply-slot"></div></div>`;
+      }
+
+      function postContentHtml(post, { bumped = new Set(), freshReply = -1 } = {}) {
         const account = ACCOUNTS[post.authorId];
         const reacted = [...post.reactions.values()].reduce((sum, who) => sum + who.size, 0);
-        const thread = post.replies.map((reply, index) => replyHtml(post, reply, index === freshReply)).join("");
+        const thread = post.replies.map((reply, index) => replyHtml(post, reply, index, index === freshReply)).join("");
         const count = (n) => `<span>${n || ""}</span>`;
-        return `${avatar(account)}
-          <div class="post-main">
-            ${metaHtml(account, post.createdAt)}
+        return `${metaHtml(account, post.createdAt)}
             <p class="post-text">${linkTags(post.text)}</p>
             <div class="reactions">${reactionsHtml(post, bumped)}</div>
             <div class="post-actions">
@@ -773,8 +793,7 @@
               <button class="act" type="button" data-kind="bookmark" aria-pressed="${post.bookmarked}" aria-label="ブックマーク">${icon("bookmark")}</button>
               <button class="act" type="button" data-kind="share" aria-label="ポストのテキストをコピー">${icon("share")}</button>
             </div>
-            <div class="thread">${thread}${typingHtml(post)}</div>
-          </div>`;
+            <div class="thread">${thread}${typingHtml(post)}</div>`;
       }
 
       function postElement(post) {
@@ -788,7 +807,8 @@
 
       function refresh(post, options) {
         const el = feedEl.querySelector(`[data-id="${post.id}"]`);
-        if (el) el.innerHTML = postHtml(post, options);
+        const content = el?.querySelector(".post-content");
+        if (content) content.innerHTML = postContentHtml(post, options);
       }
 
       function showPost(post) {
@@ -942,22 +962,35 @@
         renderUsers();
       }
 
-      function addReply(post, accountId, text) {
-        post.replies.push({ authorId: accountId, text, createdAt: Date.now() });
+      // Each reply records who it answers (toId), so the thread shows the
+      // right 返信先 and replies to replies keep their context.
+      function addReply(post, accountId, text, toId = post.authorId) {
+        post.replies.push({ authorId: accountId, toId, text, createdAt: Date.now() });
         refresh(post, { freshReply: post.replies.length - 1 });
       }
 
-      async function replyAs(post, account, delay) {
+      // Mentions are addressing, not content: the model should not echo a handle.
+      const MENTION = /@([A-Za-z0-9_]+)/g;
+      const withoutMentions = (text) => text.replace(MENTION, "").replace(/\s+/g, " ").trim() || text;
+      const mentionedBots = (text) => [...new Set([...text.matchAll(MENTION)].map((m) => m[1]))]
+        .map((handle) => [SELF, ...ALTS].find((account) => account.handle === handle)).filter(Boolean);
+
+      // `reply` is the reply being answered; without it the account answers
+      // the post itself.
+      async function replyAs(post, account, delay, reply = null) {
         await sleep(delay);
         setTyping(post, account.id, true);
         try {
           const shown = sleep(rand(900, 1800));
-          const text = await brain.reply(post.text, () => [...post.replies.map((reply) => reply.text), ...post.drafts]);
+          const prompt = reply
+            ? { text: withoutMentions(reply.text), parent: withoutMentions(reply.parentText) }
+            : { text: withoutMentions(post.text) };
+          const text = await brain.reply(prompt, () => [...post.replies.map((r) => r.text), ...post.drafts]);
           if (text) post.drafts.push(text);
           await shown;
           if (text) {
             post.drafts.splice(post.drafts.indexOf(text), 1);
-            addReply(post, account.id, text);
+            addReply(post, account.id, text, reply ? reply.authorId : post.authorId);
           }
         } finally {
           setTyping(post, account.id, false);
@@ -980,7 +1013,7 @@
         })();
 
         (async () => {
-          const liked = await brain.judge(post.text);
+          const liked = await brain.judge(withoutMentions(post.text));
           if (!liked) return;
           const fans = shuffle([SELF, ...ALTS]).slice(0, randInt(1, 4));
           await sleep(rand(1800, 3200));
@@ -992,9 +1025,28 @@
           say(`kobajinたちが ${fans.length} 件 👍 しました`);
         })();
 
-        shuffle(ALTS).slice(0, randInt(2, 3)).forEach((account, index) => {
+        // Anyone the post @mentions answers first.
+        const mentioned = mentionedBots(post.text);
+        const others = shuffle(ALTS.filter((alt) => !mentioned.includes(alt))).slice(0, Math.max(mentioned.length ? 1 : 2, randInt(2, 3) - mentioned.length));
+        [...mentioned, ...others].forEach((account, index) => {
           replyAs(post, account, rand(1800, 3000) + index * rand(1400, 2600)).catch(console.error);
         });
+      }
+
+      // The visitor replies in a thread. Whoever they answered replies back;
+      // answering their own post brings in one or two others instead.
+      function visitorReply(post, toId, parentText, text) {
+        addReply(post, VISITOR.id, text, toId);
+        const reply = { authorId: VISITOR.id, text, parentText };
+        const target = ACCOUNTS[toId];
+        const mentioned = mentionedBots(text).filter((account) => account.id !== toId);
+        const responders = target.visitor
+          ? [...mentioned, ...shuffle(ALTS.filter((alt) => !mentioned.includes(alt)))].slice(0, Math.max(mentioned.length, randInt(1, 2)))
+          : [target, ...mentioned];
+        responders.forEach((account, index) => {
+          replyAs(post, account, rand(1500, 2800) + index * rand(1400, 2600), reply).catch(console.error);
+        });
+        if (!target.visitor && Math.random() < 0.6) setTimeout(() => react(post, pick(["🤔", "👍"]), toId), rand(900, 2000));
       }
 
       let toastTimer = 0;
@@ -1226,6 +1278,49 @@
       document.addEventListener("keydown", (event) => { if (event.key === "Escape") closePicker(); });
       window.addEventListener("scroll", closePicker, { passive: true });
 
+      // Inline reply box: one at a time, under the post's thread.
+      function closeReplyBox() { feedEl.querySelector(".reply-box")?.remove(); }
+
+      function openReplyBox(article, post, toId, parentText) {
+        closeReplyBox();
+        const form = document.createElement("form");
+        form.className = "reply-box";
+        form.innerHTML = `${avatar(VISITOR, "sm")}
+          <div class="reply-box-body">
+            <div class="reply-to">返信先: <b>@${ACCOUNTS[toId].handle}</b>さん</div>
+            <label class="sr-only" for="reply-text">返信を入力</label>
+            <textarea id="reply-text" rows="1" maxlength="280" placeholder="返信をポスト" enterkeyhint="send"></textarea>
+            <div class="reply-box-tools">
+              <button class="cancel" type="button">キャンセル</button>
+              <button class="post-button" type="submit" disabled>返信</button>
+            </div>
+          </div>`;
+        article.querySelector(".reply-slot").append(form);
+        const box = form.querySelector("textarea");
+        const send = form.querySelector('[type="submit"]');
+        const sync = () => {
+          box.style.height = "";
+          if (box.value) { box.style.height = "auto"; box.style.height = `${box.scrollHeight}px`; }
+          send.disabled = !box.value.trim() || chars(box.value).length > LIMIT;
+        };
+        box.addEventListener("input", sync);
+        box.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") { event.stopPropagation(); closeReplyBox(); article.querySelector('.act[data-kind="reply"]')?.focus(); }
+          if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.isComposing) { event.preventDefault(); form.requestSubmit(); }
+        });
+        form.querySelector(".cancel").addEventListener("click", closeReplyBox);
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const text = box.value.trim();
+          if (!text || chars(text).length > LIMIT) return;
+          closeReplyBox();
+          visitorReply(post, toId, parentText, text);
+          toast("返信しました");
+        });
+        box.focus({ preventScroll: true });
+        form.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+
       feedEl.addEventListener("click", async (event) => {
         const article = event.target.closest(".post");
         if (!article) return;
@@ -1234,9 +1329,15 @@
         if (pill) { react(post, pill.dataset.emoji, VISITOR.id, { toggle: true }); return; }
         const add = event.target.closest("[data-add]");
         if (add) { openPicker(add, (emoji) => react(post, emoji, VISITOR.id)); return; }
+        const replyTo = event.target.closest("[data-reply-to]");
+        if (replyTo) {
+          const reply = post.replies[Number(replyTo.dataset.replyTo)];
+          if (reply) openReplyBox(article, post, reply.authorId, reply.text);
+          return;
+        }
         const act = event.target.closest(".act");
         if (!act) return;
-        if (act.dataset.kind === "reply") { focusComposer(); insertText(`@${ACCOUNTS[post.authorId].handle}`); }
+        if (act.dataset.kind === "reply") openReplyBox(article, post, post.authorId, post.text);
         if (act.dataset.kind === "repost") {
           repost(post, VISITOR.id, { toggle: true });
           if (post.reposts.has(VISITOR.id)) toast("リポストしました");
