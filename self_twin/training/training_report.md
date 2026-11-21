@@ -2,6 +2,13 @@
 
 ## 状態
 
+2026-11-21 WebLLM（サイト）と評価（Transformers）のずれを修正・計測。詳細は`webllm/README.md`の「WebLLM and Transformers parity」。
+
+- サイトのプロンプトは公開bundleの会話テンプレートと`enable_thinking: false`が重なり、末尾が`assistant\n<think>\n<think>\n\n</think>\n\n`だった（学習・評価にない形）。`src/chat_request.js`で上書きし、Transformersと文字単位で一致（実WebLLMで8/8）。
+- これまでの評価のサンプリングはサイトと2点違った。repetition penaltyがプロンプト全体（記憶候補を含む）に掛かっていたことと、`top_k=50`が暗黙に効いていたこと。`inference/generation.py`をWebLLMと同じ条件に直した。この日より前の評価数値はこの差を含む。
+- 残る差の大半はq4f16_1の4bit丸め。GPTQで丸めたv2候補はheld-out 60会話の模擬でKLを0.079→0.045に減らしたが、実WebLLMのサイト形式177位置ではBF16との一致が改善しなかった（83.6%→83.1%）。結論が割れているため公開しない。サイト形式のheld-out 731位置の実WebLLM計測は、PC負荷のため途中で止めた。
+- 「好きな食べ物は何？」はBF16でもサイトと同じデコードで記憶をほぼ使わない（12回中0回）。「藕」のような返事はWebLLMの誤差よりv2自体の振る舞いが主因。
+
 2026-11-21 v2の評価結果と、全バージョン公開への方針変更。
 
 - 学習: 17,400 stepsで完了（約14時間）。最終validation loss `3.357`。adapter sha256 `7a7a7721888c94f50f6f9ca2fba6c65c7f9d286cf0665ea27e5ca53ce91887ba`。base revision `851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a`。

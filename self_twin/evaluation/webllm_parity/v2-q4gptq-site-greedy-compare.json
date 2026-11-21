@@ -1,0 +1,120 @@
+{
+ "run": "evaluation/webllm_parity/v2-q4gptq-site-greedy.json",
+ "version": "v2",
+ "template": "site",
+ "mode": "greedy",
+ "model": "/Users/kobajin/repo/kobajin.com/self_twin/merged/qwen35_4b_self_twin_kobajin_clean_v2_20261121",
+ "summary": {
+  "prompts": 8,
+  "prompt_matches_transformers": 8,
+  "greedy_identical": 5,
+  "transformers_top1_agreement": 0.9354838709677419,
+  "mean_abs_logprob_diff": 0.17402696971557557
+ },
+ "rows": [
+  {
+   "prompt": "好きな食べ物は何？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n\n</think>\n\n",
+   "webllm": "うんこ",
+   "transformers": "うーん",
+   "greedy_identical": false,
+   "first_different_token": 1,
+   "tokens_compared": 3,
+   "transformers_top1_agrees": 2,
+   "mean_abs_logprob_diff": 0.19946195311288864,
+   "max_abs_logprob_diff": 0.25396838381662934
+  },
+  {
+   "prompt": "民謡習ってたってほんと？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n\n</think>\n\n",
+   "webllm": "うん",
+   "transformers": "うん",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 2,
+   "transformers_top1_agrees": 2,
+   "mean_abs_logprob_diff": 0.12533539266806218,
+   "max_abs_logprob_diff": 0.18975011172984413
+  },
+  {
+   "prompt": "TextBlurって何作ったの？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n\n</think>\n\n",
+   "webllm": "テキストのぼかし",
+   "transformers": "テキストのぼかし",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 4,
+   "transformers_top1_agrees": 4,
+   "mean_abs_logprob_diff": 0.23360792168818673,
+   "max_abs_logprob_diff": 0.6229897523294183
+  },
+  {
+   "prompt": "好きなスポーツは？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n\n</think>\n\n",
+   "webllm": "サッカー",
+   "transformers": "サッカー",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 1,
+   "transformers_top1_agrees": 1,
+   "mean_abs_logprob_diff": 0.23244335814086714,
+   "max_abs_logprob_diff": 0.23244335814086714
+  },
+  {
+   "prompt": "名前なんていうの？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n\n</think>\n\n",
+   "webllm": "僕が名前を言ったら？",
+   "transformers": "あー\nあー\nあー",
+   "greedy_identical": false,
+   "first_different_token": 0,
+   "tokens_compared": 7,
+   "transformers_top1_agrees": 4,
+   "mean_abs_logprob_diff": 0.27653208362811293,
+   "max_abs_logprob_diff": 0.5396454218056519
+  },
+  {
+   "prompt": "おはよう",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n\n</think>\n\n",
+   "webllm": "おはよう",
+   "transformers": "おはよう",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 3,
+   "transformers_top1_agrees": 3,
+   "mean_abs_logprob_diff": 0.14085650984562145,
+   "max_abs_logprob_diff": 0.3758556732509827
+  },
+  {
+   "prompt": "明日テストなんだけど何から勉強すればいい？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n\n</think>\n\n",
+   "webllm": "僕も明日テストなんだが\n何から勉強すればいい？",
+   "transformers": "えぇ\n僕も明日テスト",
+   "greedy_identical": false,
+   "first_different_token": 0,
+   "tokens_compared": 13,
+   "transformers_top1_agrees": 11,
+   "mean_abs_logprob_diff": 0.14465638224332966,
+   "max_abs_logprob_diff": 0.5338087641599252
+  },
+  {
+   "prompt": "最近寒すぎない？",
+   "prompt_matches_transformers": true,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n\n</think>\n\n",
+   "webllm": "えぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい",
+   "transformers": "えぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 60,
+   "transformers_top1_agrees": 60,
+   "mean_abs_logprob_diff": 0.03932215639753591,
+   "max_abs_logprob_diff": 0.21788907837657334
+  }
+ ]
+}

@@ -1,0 +1,319 @@
+{
+ "run": "evaluation/webllm_parity/v2-site-sampled.json",
+ "version": "v2",
+ "template": "site",
+ "mode": "sampled",
+ "model": "/Users/kobajin/repo/kobajin.com/self_twin/merged/qwen35_4b_self_twin_kobajin_clean_v2_20261121",
+ "summary": {
+  "prompts": 8,
+  "samples_per_prompt": 12,
+  "keyword_replies_webllm_vs_transformers": {
+   "好きな食べ物は何？": [
+    1,
+    0
+   ],
+   "民謡習ってたってほんと？": [
+    0,
+    1
+   ],
+   "TextBlurって何作ったの？": [
+    0,
+    1
+   ]
+  },
+  "han_without_kana_webllm_vs_transformers": [
+   3,
+   1
+  ]
+ },
+ "rows": [
+  {
+   "prompt": "好きな食べ物は何？",
+   "memory_keyword": "ナナチキ",
+   "webllm_keyword_replies": 1,
+   "transformers_keyword_replies": 0,
+   "webllm_han_without_kana": 2,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "おし\n食べないの？",
+    "納豆",
+    "それはそれとして、僕はナナチキ大好き",
+    "spaghetti",
+    "ラーメン",
+    "好きな食べ物は何？\n PeachPie\nPeach Pie is my favorite!",
+    "牛丼",
+    "なんていってるの！？",
+    "うんこ",
+    "そういえばさ\n好きな食べ物ってなに？",
+    "ほう\ntobi",
+    "ぶつ"
+   ],
+   "transformers": [
+    "ライ麦パン\n焼きそば",
+    "カレー\nラーメン",
+    "冷凍うどん",
+    "卵かけご飯",
+    "お好み焼き",
+    "ラーメン",
+    "Nattou",
+    "おかえり",
+    "えぐい",
+    "今作ってる",
+    "うーん\nおにぎりとか？",
+    "もちぴよ"
+   ]
+  },
+  {
+   "prompt": "民謡習ってたってほんと？",
+   "memory_keyword": "民謡",
+   "webllm_keyword_replies": 0,
+   "transformers_keyword_replies": 1,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "うーん、\n以前習ってた",
+    "そう\nうそ",
+    "僕もそう",
+    "😭",
+    "うん",
+    "え？\n違う",
+    "あ、まじかよ",
+    "あれって何？\n多分ないけど、昔はあった",
+    "うん\n昔から",
+    "えぐい\nあった",
+    "そう",
+    "おお\nえぐい、みんなに聞こえる\nok"
+   ],
+   "transformers": [
+    "はい",
+    "え？\nだってさ、そうだろ",
+    "そう\nある",
+    "えぐい",
+    "えぐい",
+    "うーん",
+    "うーん\nそれちょっと浮いた感じ",
+    "民謡習ってたったってほんと？",
+    "えぐい",
+    "うん",
+    "うん\n塩田文太とかもすごい",
+    "えぐ\nうん"
+   ]
+  },
+  {
+   "prompt": "TextBlurって何作ったの？",
+   "memory_keyword": "TextBlur",
+   "webllm_keyword_replies": 0,
+   "transformers_keyword_replies": 1,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "テキストボケ\nあれね",
+    "うん\nまだか",
+    "文字のぼかし",
+    "レイトレーサー",
+    "textblurってな",
+    "それな\n嘘",
+    "自分sfx作ってたの？",
+    "既にバグった()",
+    "text blurは、テキストをぼかすためのエフェクトです。\nその名の通りですね",
+    "あー\n画像のぼかし処理",
+    "これは\n知らん",
+    "バグりすぎ\n発売後10日間でそう言われるのつよい"
+   ],
+   "transformers": [
+    "テキストボケ",
+    "テキストのぼかし",
+    "AI\nある",
+    "blur",
+    "これ\n軽い",
+    "作った",
+    "TextBlurって何作ったの？",
+    "今日作った\nクソ",
+    "えぐい",
+    "今作ってた",
+    "うーん\nテキストにぼかし？",
+    "僕が作った"
+   ]
+  },
+  {
+   "prompt": "好きなスポーツは？",
+   "memory_keyword": null,
+   "webllm_keyword_replies": null,
+   "transformers_keyword_replies": null,
+   "webllm_han_without_kana": 1,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "サッカーとバレーボールが好き",
+    "バスケットボール",
+    "スケートボード",
+    "quizz",
+    "テニス",
+    "バレーボール",
+    "うわ\nやばい",
+    "クロスカントリー",
+    "テニス\nバスケ",
+    "バスケ",
+    "卓球",
+    "やる気ないから答えませんが\n好きなのはバレーボール"
+   ],
+   "transformers": [
+    "ハンドボール",
+    "今から10分後に訪れる\n10分後の生活って、どうなんだろう。",
+    "サッカー\nある",
+    "バスケット",
+    "ソフトボール",
+    "バスケ",
+    "足踏んばり",
+    "サッカー",
+    "ずっと格闘技やってて、何回も転んだ",
+    "マイクラ",
+    "ダンス",
+    "サッカー"
+   ]
+  },
+  {
+   "prompt": "名前なんていうの？",
+   "memory_keyword": null,
+   "webllm_keyword_replies": null,
+   "transformers_keyword_replies": null,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "えぐ",
+    "お",
+    "yあ\nそう",
+    "忘れた",
+    "え？",
+    "そう",
+    "たかがよ",
+    "the system",
+    "名前なんね",
+    "うーん、本名でいい？\nそれともタイトル作ってみたい",
+    "n\nね",
+    "カス"
+   ],
+   "transformers": [
+    "w\nさっき言った？",
+    "今から作る\nww",
+    "おち",
+    "名前って何？\nそういやさ、それな",
+    "これ\n名前いらないよ",
+    "僕の名前",
+    "Neko",
+    "今日さ\nクソ晴れた",
+    "えぐい",
+    "今から作ります",
+    "うーん\n俺は僕とかいいよ",
+    "僕が変換してない"
+   ]
+  },
+  {
+   "prompt": "おはよう",
+   "memory_keyword": null,
+   "webllm_keyword_replies": null,
+   "transformers_keyword_replies": null,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "おはよう",
+    "おはよう",
+    "おはよう",
+    "y",
+    "おはよう\nぐろーたあ\nちょいまって",
+    "おはよう",
+    "おはよう",
+    "おお\nおは",
+    "おはよう",
+    "おはよう",
+    "おはよう",
+    "おはよう"
+   ],
+   "transformers": [
+    "おはよう",
+    "おはよう",
+    "おはよう",
+    "おは",
+    "おはよう",
+    "おはよう",
+    "おはよう",
+    "おかえり",
+    "おはよう",
+    "今から作ってた",
+    "おはよう",
+    "おはよう"
+   ]
+  },
+  {
+   "prompt": "明日テストなんだけど何から勉強すればいい？",
+   "memory_keyword": null,
+   "webllm_keyword_replies": null,
+   "transformers_keyword_replies": null,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 1,
+   "webllm": [
+    "何科目？\nそれによって違うと思う",
+    "勉強しない",
+    "あとで聞く",
+    "ほぼいっか",
+    "数学の計算ですかね",
+    "僕は数学が強いから現代数学者の役割やって、公式だけ覚えればいけるよ",
+    "どろう？\nすき？",
+    "いきなり何から頑張っても辛いので、テストの範囲を1つに絞って勉強する",
+    "自分も今日テストでさ、勉強してなかったから大混乱",
+    "自分は明日テスト\nだけど何から勉強すればいい？",
+    "さっきのAIに聞いてる",
+    "🤔"
+   ],
+   "transformers": [
+    "自分は数学と英語\n明日のテストはどっち？",
+    "テキストのコードを覚えるか、日本語で書くか",
+    "復習あるなら先にそっちや\n明日テストだから今日勉強する",
+    "科目とか",
+    "自分の強い分野から\n教科書見る",
+    "物理",
+    "数学からかな",
+    "今日じゃないかなー？！",
+    "えぐい",
+    "今から作ってた",
+    "何がテストですか？",
+    "僕が勉強するくらいなら寝る\nが、たしかに"
+   ]
+  },
+  {
+   "prompt": "最近寒すぎない？",
+   "memory_keyword": null,
+   "webllm_keyword_replies": null,
+   "transformers_keyword_replies": null,
+   "webllm_han_without_kana": 0,
+   "transformers_han_without_kana": 0,
+   "webllm": [
+    "え、あつ",
+    "あーね\n外はそうだけど室内は暖かい",
+    "はい\n外は寒いです",
+    "こんなんない",
+    "え？\nもしかして、今の街に寒風が吹いてるのか",
+    "あーね",
+    "それっぽく見えるだけだよ",
+    "わんちゃんから勢いでいっけん",
+    "えぇ",
+    "うん",
+    "寒い",
+    "ない"
+   ],
+   "transformers": [
+    "はい、さっきからカス\n全員さんない",
+    "今からカフェオレ作ってくる",
+    "そう\nある",
+    "えぐい\nいやそうじゃなくて",
+    "えぐい\nこの間の暖房下手によく寒かった",
+    "えぐ\nあー",
+    "うーん\nそれな",
+    "今日も寒いです",
+    "えぐい",
+    "今から作ってた",
+    "うん\n塩分多いからたまにパン食ってる",
+    "えぐい"
+   ]
+  }
+ ]
+}

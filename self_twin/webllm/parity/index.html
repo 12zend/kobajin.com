@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebLLM parity</title>
+    <style>
+      body { font: 14px/1.5 ui-monospace, Menlo, monospace; margin: 16px; background: #fff; color: #111; }
+      pre { white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>WebLLM parity run</h1>
+    <p>Dev only. Query: <code>?version=v2&amp;template=site|bundle&amp;mode=greedy|sampled&amp;samples=8&amp;name=run-name</code></p>
+    <p id="status">Starting…</p>
+    <pre id="out"></pre>
+    <script type="module" src="./parity.js"></script>
+  </body>
+</html>

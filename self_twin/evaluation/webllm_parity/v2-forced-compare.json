@@ -1,0 +1,16 @@
+{
+ "v2-forced-rtn.json": {
+  "positions": 177,
+  "top1_agreement": 0.8361581920903954,
+  "mean_abs_logprob_diff": 0.20627508458605007,
+  "webllm_top_outside_transformers_top20": 0,
+  "bundle": "http://127.0.0.1:8001/resolve/local/"
+ },
+ "v2-forced-q4gptq.json": {
+  "positions": 177,
+  "top1_agreement": 0.8305084745762712,
+  "mean_abs_logprob_diff": 0.18825349088190307,
+  "webllm_top_outside_transformers_top20": 0,
+  "bundle": "http://127.0.0.1:8002/resolve/local/"
+ }
+}

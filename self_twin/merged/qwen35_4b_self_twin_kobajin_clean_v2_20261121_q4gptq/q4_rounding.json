@@ -1,0 +1,7 @@
+{
+ "source": "merged/qwen35_4b_self_twin_kobajin_clean_v2_20261121",
+ "method": "gptq",
+ "group_size": 32,
+ "calibration": "dataset/kobajin_clean_v2_train.jsonl",
+ "calibration_count": 128
+}

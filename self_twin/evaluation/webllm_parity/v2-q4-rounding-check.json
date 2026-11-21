@@ -1,0 +1,57 @@
+{
+ "model": "merged/qwen35_4b_self_twin_kobajin_clean_v2_20261121",
+ "run": "evaluation/webllm_parity/v2-site-greedy.json",
+ "results": {
+  "rtn": {
+   "parity_prompts": {
+    "mean_kl": 0.017665383272364225,
+    "max_kl": 0.17449751496315002,
+    "top1_agreement": 0.9626168224299065,
+    "positions": 214,
+    "greedy_identical": 3
+   },
+   "heldout_replies": {
+    "mean_kl": 0.07920347343970603,
+    "max_kl": 1.261916160583496,
+    "top1_agreement": 0.8079019073569482,
+    "positions": 734
+   },
+   "mean_weight_mse": 1.5603829038685447e-06,
+   "seconds": 63
+  },
+  "gptq": {
+   "parity_prompts": {
+    "mean_kl": 0.01071503126197364,
+    "max_kl": 0.0808873176574707,
+    "top1_agreement": 0.9766355140186916,
+    "positions": 214,
+    "greedy_identical": 4
+   },
+   "heldout_replies": {
+    "mean_kl": 0.045178224023432176,
+    "max_kl": 1.380048155784607,
+    "top1_agreement": 0.8528610354223434,
+    "positions": 734
+   },
+   "mean_weight_mse": 2.798092176622177e-06,
+   "seconds": 496
+  },
+  "gptq_head": {
+   "parity_prompts": {
+    "mean_kl": 0.010682652217200543,
+    "max_kl": 0.07995779067277908,
+    "top1_agreement": 0.9766355140186916,
+    "positions": 214,
+    "greedy_identical": 4
+   },
+   "heldout_replies": {
+    "mean_kl": 0.04520961287697695,
+    "max_kl": 1.3756349086761475,
+    "top1_agreement": 0.8514986376021798,
+    "positions": 734
+   },
+   "mean_weight_mse": 2.7919574750693437e-06,
+   "seconds": 625
+  }
+ }
+}

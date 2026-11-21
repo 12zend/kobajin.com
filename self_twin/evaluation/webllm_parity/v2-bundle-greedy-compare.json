@@ -1,0 +1,120 @@
+{
+ "run": "evaluation/webllm_parity/v2-bundle-greedy.json",
+ "version": "v2",
+ "template": "bundle",
+ "mode": "greedy",
+ "model": "/Users/kobajin/repo/kobajin.com/self_twin/merged/qwen35_4b_self_twin_kobajin_clean_v2_20261121",
+ "summary": {
+  "prompts": 8,
+  "prompt_matches_transformers": 0,
+  "greedy_identical": 5,
+  "transformers_top1_agreement": 0.9640522875816994,
+  "mean_abs_logprob_diff": 0.09256312148518894
+ },
+ "rows": [
+  {
+   "prompt": "好きな食べ物は何？",
+   "prompt_matches_transformers": false,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n<think>\n\n</think>\n\n",
+   "webllm": "うーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん",
+   "transformers": "うーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん\nうーん",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 60,
+   "transformers_top1_agrees": 60,
+   "mean_abs_logprob_diff": 0.057490199558570265,
+   "max_abs_logprob_diff": 0.39683649618806704
+  },
+  {
+   "prompt": "民謡習ってたってほんと？",
+   "prompt_matches_transformers": false,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n<think>\n\n</think>\n\n",
+   "webllm": "うん",
+   "transformers": "うん",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 2,
+   "transformers_top1_agrees": 2,
+   "mean_abs_logprob_diff": 0.047732628925822806,
+   "max_abs_logprob_diff": 0.07591254098940092
+  },
+  {
+   "prompt": "TextBlurって何作ったの？",
+   "prompt_matches_transformers": false,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n<think>\n\n</think>\n\n",
+   "webllm": "TextBlurは、テキストのぼかし効果を作るためのコードです。\nテキストのぼかし効果は、テキストの背景をぼかすことで、テキストが浮き出るような効果を作ることができます。\nこれは、テキストの背景をぼかすことで、テキストが浮き出るような効果",
+   "transformers": "テキストのぼかし",
+   "greedy_identical": false,
+   "first_different_token": 0,
+   "tokens_compared": 60,
+   "transformers_top1_agrees": 51,
+   "mean_abs_logprob_diff": 0.127645123057018,
+   "max_abs_logprob_diff": 0.7206489061658032
+  },
+  {
+   "prompt": "好きなスポーツは？",
+   "prompt_matches_transformers": false,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n<think>\n\n</think>\n\n",
+   "webllm": "サッカー",
+   "transformers": "サッカー",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 1,
+   "transformers_top1_agrees": 1,
+   "mean_abs_logprob_diff": 0.21350531621514568,
+   "max_abs_logprob_diff": 0.21350531621514568
+  },
+  {
+   "prompt": "名前なんていうの？",
+   "prompt_matches_transformers": false,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n<think>\n\n</think>\n\n",
+   "webllm": "あー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー",
+   "transformers": "あー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー\nあー",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 60,
+   "transformers_top1_agrees": 60,
+   "mean_abs_logprob_diff": 0.06466340142794524,
+   "max_abs_logprob_diff": 0.5798189987085949
+  },
+  {
+   "prompt": "おはよう",
+   "prompt_matches_transformers": false,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n<think>\n\n</think>\n\n",
+   "webllm": "おはよう",
+   "transformers": "おはよう",
+   "greedy_identical": true,
+   "first_different_token": null,
+   "tokens_compared": 3,
+   "transformers_top1_agrees": 3,
+   "mean_abs_logprob_diff": 0.11898838334156771,
+   "max_abs_logprob_diff": 0.18060290727202555
+  },
+  {
+   "prompt": "明日テストなんだけど何から勉強すればいい？",
+   "prompt_matches_transformers": false,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n<think>\n\n</think>\n\n",
+   "webllm": "え？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？",
+   "transformers": "えぇ\n僕も明日テスト",
+   "greedy_identical": false,
+   "first_different_token": 1,
+   "tokens_compared": 60,
+   "transformers_top1_agrees": 59,
+   "mean_abs_logprob_diff": 0.0556987233584921,
+   "max_abs_logprob_diff": 0.5491485173808626
+  },
+  {
+   "prompt": "最近寒すぎない？",
+   "prompt_matches_transformers": false,
+   "webllm_assistant_header": "<|im_start|>assistant\n<think>\n<think>\n\n</think>\n\n",
+   "webllm": "え？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？\nえ？",
+   "transformers": "えぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい\nえぐい",
+   "greedy_identical": false,
+   "first_different_token": 1,
+   "tokens_compared": 60,
+   "transformers_top1_agrees": 59,
+   "mean_abs_logprob_diff": 0.054781195996949715,
+   "max_abs_logprob_diff": 0.5108958512810835
+  }
+ ]
+}

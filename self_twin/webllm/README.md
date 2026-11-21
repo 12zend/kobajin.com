@@ -61,6 +61,52 @@ self_twin/mlc-venv/bin/hf upload kobajin/kobajinAI self_twin/webllm/hf-upload/ko
 
 The repository is public, so the browser app can download anonymously. Do not put a Hugging Face write token in the website. The browser app includes a small curated public-memory file at `src/public_memories.json`; it does not bundle the private memory store or Discord history.
 
+## WebLLM and Transformers parity
+
+Evaluations run the merged BF16 checkpoint in Transformers; visitors run the q4f16_1 bundle in WebLLM. Three differences that made the site differ from what evaluation measured were found and fixed on 2026-11-21:
+
+1. **Prompt.** The bundles' `mlc-chat-config.json` (MLC's `qwen3_5` template) has `"<|im_start|>assistant\n<think>"` as the assistant role. With `enable_thinking: false`, WebLLM appends its own `<think>\n\n</think>\n\n`, so every site prompt ended in `assistant\n<think>\n<think>\n\n</think>\n\n`, which the model never saw in training. `src/chat_request.js` now overrides the role to `<|im_start|>assistant` at load time (the published bundle files are unchanged), and the prompt is character for character the one Transformers builds with `enable_thinking=False`.
+2. **Repetition penalty.** WebLLM penalizes only tokens generated in the current reply; Transformers also penalized every prompt token, including the memory candidates. `inference/generation.py` now does what WebLLM does.
+3. **top-k.** Transformers silently sampled with `top_k=50`; WebLLM has no top-k. `generation.py` now disables it.
+
+To measure the remaining difference, open the dev-only page `/self_twin/webllm/parity/` (`npm run dev`). It builds prompts with the site's own code and runs `parity/prompts.json` through the real WebLLM engine, then saves the run to `self_twin/evaluation/webllm_parity/`. `self_twin/evaluation/webllm_parity.py <run>.json` compares it with Transformers. Query options are documented at the top of `parity/parity.js`. A browser whose site storage can't hold the 2.2 GB bundle (the desktop app's browser pane stops at about 1.5 GB) can use `cache=memory` with a local bundle from `serve_local_bundle.py --bundle <folder>`.
+
+v2, greedy decoding, 8 prompts, the local bundle files verified identical to `v2/` at `1f9287d`:
+
+| | Prompt equals Transformers | Same greedy reply | Transformers' top token = WebLLM's token | Mean abs. log-prob difference |
+|---|---|---|---|---|
+| Bundle template (before) | 0/8 | 5/8 | 96.4 % | 0.093 |
+| Site override (after) | 8/8 | 4/8 | 98.7 % | 0.094 |
+
+The remaining difference is q4f16_1 rounding: WebLLM's first-token probabilities for 「好きな食べ物は何？」 match Transformers to within 0.001 (「う」 0.042 against 0.043), but most prompts here have a flat distribution, so small shifts change which reply is sampled. Greedy replies without repetition penalty loop, as they do in Transformers; that run is a measurement, not the site's decoding.
+
+### Rounding into q4f16_1
+
+`webllm/q4_rounding.py check` simulates q4f16_1 on the Transformers model and measures how far each way of rounding moves it from BF16. Its simulation of MLC's own rounding matches what WebLLM showed (top-1 agreement 96.3 % on the parity prompts against 96.4–98.7 % measured in the browser). v2, 60 held-out real replies from `kobajin_clean_v2_validation.jsonl` (734 token positions, teacher-forced) and the 8 parity prompts; GPTQ calibrated on 64 conversations from the training split (`evaluation/webllm_parity/v2-q4-rounding-check.json`):
+
+| Rounding | Held-out KL from BF16 | Held-out top-1 agreement | Parity-prompt KL | Parity top-1 |
+|---|---|---|---|---|
+| float16, no quantization (earlier run) | — | — | 0.00014 | 99.5 % |
+| MLC `convert_weight` (published bundles) | 0.079 | 80.8 % | 0.0177 | 96.3 % |
+| max-abs scale shrunk for least squared error (earlier run) | — | — | 0.0192 | 96.7 % |
+| GPTQ, output head by least squared error | **0.045** | **85.3 %** | **0.0107** | **97.7 %** |
+| GPTQ including the output head | 0.045 | 85.1 % | 0.0107 | 97.7 % |
+
+Almost all of the difference is the 4-bit rounding, not float16 arithmetic. GPTQ keeps the q4f16_1 layout, so the result still runs on WebLLM's prebuilt Qwen3.5-4B library: `q4_rounding.py export` writes a checkpoint whose weights already lie on the GPTQ grid, `mlc_llm convert_weight` turns it into a bundle as usual, and `q4_rounding.py verify` checks the bundle holds those weights.
+
+A GPTQ v2 candidate was built this way (128 calibration conversations from the training split) at `merged/qwen35_4b_self_twin_kobajin_clean_v2_20261121_q4gptq/` and `webllm/hf-upload/kobajin-clean-v2-q4gptq/` (local only, not published). MLC's converter keeps GPTQ's levels except for float16 rounding of the scales, which adds about 1/1000 of the rounding error itself.
+
+In the browser it was measured teacher-forced (`evaluation/webllm_forced.py`, the parity page's `mode=forced`): Transformers BF16 sampled 3 replies to each parity prompt, and both bundles scored the same 177 positions in WebLLM.
+
+| 177 site-prompt positions | WebLLM top token = BF16 top token | Mean abs. log-prob difference | Same weights in Transformers: top token = BF16 |
+|---|---|---|---|
+| Published v2 bundle (MLC rounding) | 83.6 % | 0.206 | 85.9 % |
+| GPTQ candidate | 83.1 % | 0.188 | 81.9 % |
+
+WebLLM's own kernels add little: its top token equals that of Transformers running the same rounded weights at 94–96 % of these positions. But on the site's prompts GPTQ was not closer to BF16, while on the 60 held-out conversations above it was clearly closer. A larger held-out run in the site's exact format (731 positions, production system prompt; `--heldout` in `webllm_forced.py`, output git-ignored) was stopped before finishing because it made the machine too slow. Until that run decides it, the GPTQ candidate is not published and the site keeps the published bundles.
+
+With the site's decoding (12 replies per parity prompt; `evaluation/webllm_parity/v2-site-sampled-compare.json`), WebLLM and Transformers behave alike. For the three memory questions, WebLLM's replies used the memory in 1 of 36 and Transformers' in 2 of 36. For 「好きな食べ物は何？」 both mostly name a made-up food (WebLLM: 納豆, 牛丼, spaghetti, …; Transformers: カレー, 卵かけご飯, …). Replies such as 「藕」 are therefore v2's own behavior on a bare question, not a WebLLM error: v2 learned to quote a memory that also appears in the real reply, and rarely does so for a question with no conversation around it.
+
 ## Runtime details
 
 - Public read access is required for anonymous browser downloads. This static app intentionally has no token handling.
