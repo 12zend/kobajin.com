@@ -139,6 +139,17 @@
         <legend class="sr-only">バージョン</legend>
         <div id="model-versions"></div>
       </fieldset>
+      <details class="specs">
+        <summary>推奨スペック</summary>
+        <dl>
+          <dt>ブラウザ</dt><dd>WebGPUに対応したもの（最新のChrome・Edge、Safari 26以降）</dd>
+          <dt>GPU</dt><dd>16bit浮動小数（shader-f16）に対応したもの</dd>
+          <dt>メモリ</dt><dd>GPUが使えるメモリが約4GB。メモリ16GB以上のApple Silicon Mac、またはVRAM 6GB以上のGPUを積んだPCなら快適です</dd>
+          <dt>空き容量</dt><dd>ブラウザの保存領域に約2.2GB</dd>
+        </dl>
+        <p>メモリ8GBのMacや内蔵GPUのPCでも動くことはありますが、遅くなったり、ほかのタブを閉じる必要があったりします。スマホではほとんど動きません。</p>
+        <p>一度起動すると、次にこのサイトを開いたときは保存済みのモデルで自動的に動きます。「停止してモックに戻す」を押すと、次からはモックで始まります。</p>
+      </details>
       <div class="model-progress" id="model-progress" hidden><span id="model-progress-bar"></span></div>
       <p class="sheet-status" id="model-status" role="status"></p>
       <button class="post-button wide" id="model-start" type="button">起動</button>

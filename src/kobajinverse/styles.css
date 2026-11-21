@@ -262,6 +262,12 @@ svg.i { width: 1.25em; height: 1.25em; fill: none; stroke: currentColor; stroke-
 .version-copy { display: grid; gap: 4px; }
 .version-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 700; }
 .version-note { color: var(--muted); font-size: 14px; line-height: 1.45; }
+.specs { margin: 4px 0 12px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.specs summary { width: fit-content; color: var(--blue); font-weight: 700; cursor: pointer; }
+.specs dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 8px 0; }
+.specs dt { color: var(--text); font-weight: 700; }
+.specs dd { margin: 0; }
+.specs p { margin: 8px 0 0; }
 .model-progress { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
 .model-progress span { display: block; height: 100%; width: 0; background: var(--blue); transition: width 0.3s; }
 .profile-top { display: flex; align-items: center; gap: 16px; margin: 8px 0 16px; }

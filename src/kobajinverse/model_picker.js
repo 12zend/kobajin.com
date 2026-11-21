@@ -10,8 +10,11 @@ import { posts } from "./state.js";
 // The page runs on the mock until the visitor starts a version. Starting
 // downloads that version once (about 2.2 GB) and keeps it in this
 // browser; only the chosen version is downloaded and loaded (AGENTS.md).
-// A visitor who started the model before, and whose version is saved
-// here, gets it back as soon as they post (wakeModel).
+// Once a version has come online here, the page remembers it (STARTED_KEY)
+// and, on later visits, starts it again by itself as soon as it finds the
+// version saved in this browser (autoStart). Stopping it clears that, so
+// the next visit begins on the mock. If the saved check has not finished
+// when the visitor posts, posting starts it too (wakeModel).
 //
 // Only one tab runs the model (engine.js). Starting it here takes it from
 // another tab, which goes back to the mock ("elsewhere"); posting in a
@@ -78,7 +81,7 @@ function render() {
     elsewhere: "kobajinAIは一度に1つのタブでだけ動きます（2つ動かすとメモリとGPUを2倍使うため）。起動すると、もう一方のタブはモックに戻ります。",
     unsupported: "WebGPUに対応したブラウザ（最新のChromeやEdgeなど）で開くと、kobajinAIを動かせます。それまではモック推論（定型文）で動きます。",
   }[state] || (cached.has(chosen)
-    ? "このブラウザに保存済みなので、すぐに起動できます。"
+    ? "このブラウザに保存済みなので、すぐに起動できます。一度起動すると、次からはサイトを開いたときに自動で動きます。"
     : "初回だけHugging Faceからモデル（約2.2GB）をダウンロードして、このブラウザに保存します。Wi-Fiでの利用をおすすめします。");
 }
 
@@ -98,6 +101,7 @@ function goOnline(engine, version) {
   }));
   state = "online";
   cached.add(version);
+  write(STARTED_KEY, "1");
   render();
   refreshAll(posts);
   say(`kobajinAI ${version} がオンラインになりました`);
@@ -120,7 +124,6 @@ async function start({ steal = true } = {}) {
   llm.use(null);
   state = "loading";
   progress = { ratio: 0, text: "準備しています…" };
-  write(STARTED_KEY, "1");
   render();
   try {
     const loaded = await load(version, (report) => {
@@ -162,9 +165,15 @@ function describe(text = "") {
   return "読み込み中…";
 }
 
+// A visitor who ran the model before gets it back without asking. It
+// never takes the model from another tab.
+function autoStart() {
+  if (state === "idle" && read(STARTED_KEY) && cached.has(chosen)) start({ steal: false });
+}
+
 // Called when the visitor posts or replies.
 export function wakeModel() {
-  if (state === "idle" && read(STARTED_KEY) && cached.has(chosen)) start({ steal: false });
+  autoStart();
 }
 
 // Another tab started the model and took it from this one.
@@ -197,12 +206,16 @@ export function setupModelPicker() {
     if ($("model-start").dataset.action === "stop") stop(); else start();
   });
   render();
-  // Marks saved versions, once the page has settled; nothing is loaded
-  // until the visitor starts one.
+  // Marks saved versions once the page has settled, then starts the
+  // remembered one. A first-time visitor loads nothing until they start
+  // a version.
   if (HAS_WEBGPU) {
     setTimeout(() => {
       Promise.all(MODELS.map(async (model) => { if (await isCached(model.version)) cached.add(model.version); }))
-        .then(() => { if (state !== "online" && state !== "loading") render(); })
+        .then(() => {
+          if (state !== "online" && state !== "loading") render();
+          autoStart();
+        })
         .catch(() => {});
     }, 1500);
   }

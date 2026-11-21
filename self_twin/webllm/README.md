@@ -127,7 +127,7 @@ With the site's decoding (12 replies per parity prompt; `evaluation/webllm_parit
 ## Runtime details
 
 - Public read access is required for anonymous browser downloads. This static app intentionally has no token handling.
-- Nothing loads when the site opens. Only the version the visitor has selected is downloaded (once, into the browser Cache API) and loaded into memory, when the visitor sends a message or presses Bring online. Switching versions unloads the previous one from memory; its weights stay cached. Already cached versions are marked "saved" in the picker. WebLLM downloads weights from Hugging Face and its prebuilt WebGPU library from MLC's static library repository.
+- For a first-time visitor nothing loads when the site opens. Only the version the visitor has selected is downloaded (once, into the browser Cache API) and loaded into memory, when the visitor starts it. After a version has come online once, later visits load it from the cache as soon as the page opens, until the visitor stops it. Switching versions unloads the previous one from memory; its weights stay cached. Already cached versions are marked "saved" in the picker. WebLLM downloads weights from Hugging Face and its prebuilt WebGPU library from MLC's static library repository.
 - The website is static and can be hosted over HTTPS. Chat generation happens locally in WebGPU; the first download needs internet access. Browser storage can be evicted or cleared.
 - The published v3 model is an owner-authorized experimental update over the prior HF candidate. Evaluation records still mark the base-model quality gate as not passed; the merge receipt retains that status.
 
