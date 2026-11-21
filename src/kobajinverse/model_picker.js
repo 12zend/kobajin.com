@@ -1,6 +1,6 @@
-import { DEFAULT_VERSION, MODELS, findModel } from "../models.js";
+import { DEFAULT_VERSION, MODELS, familyOf, findModel } from "../models.js";
 import { $, escapeHtml, say, toast } from "./dom.js";
-import { DEV_FLAGS, EngineBusyError, HAS_WEBGPU, isCached, load, onEvict, unload } from "./engine.js";
+import { DEV_FLAGS, EngineBusyError, HAS_WEBGPU, gpuProblem, isCached, load, onEvict, unload } from "./engine.js";
 import { createWebLLM, llm, mockLLM } from "./llm.js";
 import { refreshAll } from "./render.js";
 import { posts } from "./state.js";
@@ -13,7 +13,8 @@ import { posts } from "./state.js";
 // shows canned text (AGENTS.md). A first-time visitor downloads nothing
 // until they press the download button; the screen says first how much
 // storage it needs and that 8 GB machines may struggle. Starting
-// downloads that version once (about 2.2 GB) and keeps it in this
+// downloads that version once (about 2.4 GB for a Qwen3.5-4B version, less
+// for the smaller ones; FAMILIES in models.js) and keeps it in this
 // browser; only the chosen version is downloaded and loaded.
 //
 // Once a version has come online here, the page remembers it
@@ -30,9 +31,9 @@ const STARTED_KEY = "kobajinverse.model-started";
 const read = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
 const write = (key, value) => { try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch { /* this visit only */ } };
 
-// Free browser storage below this gets a warning: 2.2 GB of weights,
-// WebLLM's library, and room to spare.
-const NEEDED_BYTES = 3e9;
+// Free browser storage below the chosen version's weights plus this gets a
+// warning: WebLLM's library and room to spare.
+const SPARE_BYTES = 0.8e9;
 const GB = 1e9;
 
 let chosen = findModel(read(MODEL_KEY) || DEFAULT_VERSION).version;
@@ -40,6 +41,7 @@ let chosen = findModel(read(MODEL_KEY) || DEFAULT_VERSION).version;
 let state = !HAS_WEBGPU ? "unsupported" : read(STARTED_KEY) ? "checking" : "idle";
 let progress = { ratio: 0, text: "" };
 let errorText = "";
+let unsupportedText = "WebGPUに対応したブラウザ（最新のChrome・Edge、Safari 26以降）で開くと、kobajinAIを動かせます。";
 let freeBytes = null; // browser storage left, when the browser says
 const cached = new Set();
 
@@ -49,6 +51,9 @@ export const modelReady = new Promise((resolve) => { markReady = resolve; });
 
 const percent = () => `${Math.round(progress.ratio * 100)}%`;
 const size = (bytes) => `約${(bytes / GB).toFixed(1)}GB`;
+const family = () => familyOf(findModel(chosen));
+// The lightest published version, suggested to low-memory devices.
+const lightest = () => MODELS.filter((model) => familyOf(model).light).at(-1) || null;
 
 function chipText() {
   if (state === "online") return `kobajinAI ${chosen}`;
@@ -70,7 +75,7 @@ function buttonText() {
     error: "もう一度試す",
     unsupported: "このブラウザでは使えません",
     elsewhere: `${chosen} をこのタブで起動`,
-  }[state] || (cached.has(chosen) ? `${chosen} を起動` : `${chosen} をダウンロードして始める（約2.2GB）`);
+  }[state] || (cached.has(chosen) ? `${chosen} を起動` : `${chosen} をダウンロードして始める（${size(family().downloadBytes)}）`);
 }
 
 function statusText() {
@@ -80,27 +85,68 @@ function statusText() {
     loading: progress.text,
     error: errorText,
     elsewhere: "kobajinAIは一度に1つのタブでだけ動きます（2つ動かすとメモリとGPUを2倍使うため）。起動すると、もう一方のタブは止まります。",
-    unsupported: "WebGPUに対応したブラウザ（最新のChrome・Edge、Safari 26以降）で開くと、kobajinAIを動かせます。",
+    unsupported: unsupportedText,
   }[state] || (cached.has(chosen)
     ? "このブラウザに保存済みなので、ダウンロードせずに起動できます。"
     : "Hugging Faceからモデルをダウンロードして、このブラウザに保存します。次からはダウンロードなしで起動します。");
 }
 
+// What each size of version asks of the device, for the start screen and
+// the recommended-specs list. The light (LFM2.5) numbers are WebLLM's
+// estimate; they are not yet measured on a 4 GB device.
+function needs(fam) {
+  if (fam.light) {
+    return {
+      memory: `GPUが使えるメモリが約${(fam.gpuMB / 1000).toFixed(1)}GB。メモリ4GBのタブレットやスマホでも動く見込みです`,
+      note: "軽量版です。WebGPUとshader-f16に対応した端末なら、スマホやタブレットでも動く見込みです。古い端末では遅くなることがあります。",
+      warn: "軽量版です。メモリの少ない端末では、ほかのアプリを閉じてから始めてください。",
+      browser: "WebGPUに対応したブラウザ（最新のChrome・Edge、Safari 26以降）。スマホやタブレットでも、WebGPUに対応していれば動く見込みです。",
+    };
+  }
+  if (fam.gpuMB < 3000) {
+    return {
+      memory: `GPUが使えるメモリが約${(fam.gpuMB / 1000).toFixed(1)}GB。メモリ8GBのMacやPCでも動く見込みです`,
+      note: "中くらいの大きさの版です。メモリ8GBのMacやPCでも動く見込みですが、ほかのタブを閉じると安定します。スマホでは重いことがあります。",
+      warn: "メモリ8GBの端末では、ほかのタブやアプリを閉じてから始めてください。",
+      browser: "WebGPUに対応したパソコンのブラウザ（最新のChrome・Edge、Safari 26以降）。スマホでは重いことがあります。",
+    };
+  }
+  return {
+    memory: "GPUが使えるメモリが約4GB。メモリ16GB以上のApple Silicon Mac、またはVRAM 6GB以上のGPUを積んだPCなら快適です",
+    note: "メモリ8GBのMacや内蔵GPUのPCでも動くことはありますが、遅くなったり、ほかのタブを閉じる必要があったりします。スマホではほとんど動きません。",
+    warn: "メモリ8GBの端末では、重くなったり途中で止まったりすることがあります。ほかのタブやアプリを閉じてから始めてください。",
+    browser: "WebGPUに対応したパソコンのブラウザ（最新のChrome・Edge、Safari 26以降）。スマホではほとんど動きません。",
+  };
+}
+
 // Storage and memory notes on the start screen. The memory note is always
 // there; a device that reports less than 8 GB (navigator.deviceMemory,
-// Chromium only, capped at 8) gets a stronger one.
+// Chromium only, capped at 8) gets a stronger one when the chosen version
+// is not a light one, pointing to the light version if one is published.
 function renderNotes() {
+  const fam = family();
+  const need = needs(fam);
   const memory = navigator.deviceMemory;
-  const lowMemory = typeof memory === "number" && memory < 8;
-  $("gate-memory").textContent = lowMemory
-    ? `この端末のメモリは${memory}GB程度のようです。kobajinAIはおそらく動きません。`
-    : "メモリ8GBの端末では、重くなったり途中で止まったりすることがあります。ほかのタブやアプリを閉じてから始めてください。";
+  const lowMemory = typeof memory === "number" && memory < 8 && !fam.light;
+  const light = lightest();
+  $("gate-memory").textContent = !lowMemory
+    ? need.warn
+    : light
+      ? `この端末のメモリは${memory}GB程度のようです。${chosen} はおそらく動きません。軽量版の ${light.version} を選んでください。`
+      : `この端末のメモリは${memory}GB程度のようです。kobajinAIはおそらく動きません。`;
   $("gate-memory").closest("li").dataset.warn = String(lowMemory);
-  const lowStorage = freeBytes !== null && freeBytes < NEEDED_BYTES && !cached.has(chosen);
+  const download = size(fam.downloadBytes);
+  const lowStorage = freeBytes !== null && freeBytes < fam.downloadBytes + SPARE_BYTES && !cached.has(chosen);
   $("gate-storage").textContent = lowStorage
-    ? `このブラウザで使える空きが${size(freeBytes)}しかありません。数GBの空きを作ってから始めてください。`
-    : "端末のストレージに数GBの空きが必要です（モデルは約2.2GB）。";
+    ? `このブラウザで使える空きが${size(freeBytes)}しかありません。${size(fam.downloadBytes + SPARE_BYTES)}以上の空きを作ってから始めてください。`
+    : `端末のストレージに空きが必要です（モデルは${download}）。`;
   $("gate-storage").closest("li").dataset.warn = String(lowStorage);
+  $("gate-browser").textContent = need.browser;
+  $("gate-network").textContent = `はじめの1回だけ${download}を受信します。Wi-Fiでの利用をおすすめします。`;
+  $("spec-title").textContent = `推奨スペック（${chosen}）`;
+  $("spec-memory").textContent = need.memory;
+  $("spec-storage").textContent = `ストレージに${size(fam.downloadBytes + SPARE_BYTES)}程度（モデルは${download}）`;
+  $("spec-note").textContent = need.note;
 }
 
 function render() {
@@ -114,11 +160,11 @@ function render() {
   $("model-versions").innerHTML = MODELS.map((model) => `<label class="version">
       <input type="radio" name="model-version" value="${model.version}"${model.version === chosen ? " checked" : ""}${locked ? " disabled" : ""} />
       <span class="version-copy">
-        <span class="version-name">${model.version}${model.version === DEFAULT_VERSION ? '<span class="badge alt">いちばんkobajinに近い</span>' : ""}${cached.has(model.version) ? '<span class="badge you">保存済み</span>' : ""}</span>
+        <span class="version-name">${model.version}${model.version === DEFAULT_VERSION ? '<span class="badge alt">いちばんkobajinに近い</span>' : ""}${familyOf(model).light ? '<span class="badge you">軽量</span>' : ""}${cached.has(model.version) ? '<span class="badge you">保存済み</span>' : ""}</span>
         <span class="version-note">${escapeHtml(model.note || model.summary)}</span>
       </span>
     </label>`).join("");
-  $("gate-version").innerHTML = MODELS.map((model) => `<option value="${model.version}"${model.version === chosen ? " selected" : ""}>${model.version}${model.version === DEFAULT_VERSION ? "（いちばんkobajinに近い）" : ""}${cached.has(model.version) ? "・保存済み" : ""}</option>`).join("");
+  $("gate-version").innerHTML = MODELS.map((model) => `<option value="${model.version}"${model.version === chosen ? " selected" : ""}>${model.version}${model.version === DEFAULT_VERSION ? "（いちばんkobajinに近い）" : ""}${familyOf(model).light ? "・軽量" : ""}${cached.has(model.version) ? "・保存済み" : ""}</option>`).join("");
   $("gate-version").disabled = locked || state === "loading";
 
   const action = state === "online" || state === "loading" ? "stop" : "start";
@@ -236,6 +282,15 @@ function choose(version) {
 // Finds which versions are saved here and how much storage is left, then
 // brings back a version this visitor ran before.
 async function survey() {
+  // Every version needs shader-f16 (q4f16_1); without it WebLLM fails after
+  // the download, so say so up front.
+  const problem = await gpuProblem();
+  if (problem) {
+    unsupportedText = problem;
+    state = "unsupported";
+    render();
+    return;
+  }
   await Promise.all([
     ...MODELS.map(async (model) => { if (await isCached(model.version)) cached.add(model.version); }),
     navigator.storage?.estimate?.().then(({ quota, usage }) => {

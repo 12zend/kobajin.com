@@ -1,4 +1,5 @@
 import { createMockLLM } from "./mock_llm.js";
+import { familyOf, findModel } from "../models.js";
 import { PROMPTS } from "./prompts.js";
 
 // Inference layer
@@ -21,6 +22,9 @@ import { PROMPTS } from "./prompts.js";
 
 // `onFail` hears about an engine error (the call still rejects).
 export function createWebLLM(engine, version, onFail = () => {}) {
+  // Qwen3.5 versions need enable_thinking: false; LFM2.5 must not get it
+  // (see FAMILIES in models.js).
+  const extraBody = familyOf(findModel(version)).extraBody;
   return {
     name: "webllm",
     version,
@@ -31,7 +35,7 @@ export function createWebLLM(engine, version, onFail = () => {}) {
         const reply = await engine.chat.completions.create({
           messages: prompt.messages(input),
           ...prompt.decoding,
-          extra_body: { enable_thinking: false },
+          extra_body: extraBody,
         });
         return reply.choices[0]?.message?.content || "";
       } catch (error) {

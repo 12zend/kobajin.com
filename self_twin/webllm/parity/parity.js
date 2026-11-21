@@ -5,7 +5,8 @@
 // /self_twin/webllm/parity/).
 //
 //   version   published version to load (default: the site's default)
-//   template  site   = the site's conv template override (src/chat_request.js)
+//   template  site   = the site's conv template (src/chat_request.js; Qwen3.5
+//                      versions get an override, LFM2.5 keeps the bundle's)
 //             bundle = the bundle's own mlc-chat-config.json template
 //   mode      greedy = top-1 decoding with logprobs, repetition penalty off
 //             sampled = the site's CHAT_DECODING, `samples` replies per prompt
@@ -22,8 +23,8 @@
 //             whose site storage can't hold a 2.2 GB bundle)
 //   name      file name for the saved run
 
-import { CreateMLCEngine, prebuiltAppConfig } from "@mlc-ai/web-llm";
-import { BASE_MODEL_ID, CHAT_DECODING, buildAppConfig, buildSystemPrompt, formatConversationLog } from "../../../src/chat_request.js";
+import { CreateMLCEngine } from "@mlc-ai/web-llm";
+import { CHAT_DECODING, buildAppConfig, buildSystemPrompt, extraBodyFor, formatConversationLog, libraryRecord } from "../../../src/chat_request.js";
 import { DEFAULT_VERSION, findModel } from "../../../src/models.js";
 import PROMPTS from "./prompts.json";
 import WEBLLM_PACKAGE from "../../../node_modules/@mlc-ai/web-llm/package.json";
@@ -86,9 +87,8 @@ function appConfigFor() {
   if (params.get("cache") === "memory") useMemoryCaches();
   else if (params.get("cache")) appConfig.cacheBackend = params.get("cache");
   if (template === "bundle") {
-    const baseRecord = prebuiltAppConfig.model_list.find((item) => item.model_id === BASE_MODEL_ID);
     const record = appConfig.model_list.find((item) => item.model_id === model.id);
-    record.overrides = baseRecord.overrides;
+    record.overrides = libraryRecord(model).overrides;
   }
   return appConfig;
 }
@@ -146,7 +146,7 @@ async function run() {
       const reply = await engine.chat.completions.create({
         messages,
         ...request,
-        extra_body: { enable_thinking: false },
+        extra_body: extraBodyFor(model),
       });
       const choice = reply.choices[0];
       const entry = { text: choice.message.content, finish_reason: choice.finish_reason };

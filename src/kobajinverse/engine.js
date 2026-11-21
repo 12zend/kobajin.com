@@ -16,6 +16,23 @@ export const DEV_FLAGS = import.meta.env.DEV ? new URLSearchParams(location.sear
 // `?mock` skips the start screen and runs on the mock.
 export const HAS_WEBGPU = Boolean(navigator.gpu) && !DEV_FLAGS.has("no-webgpu");
 
+// Every bundle is q4f16_1, which needs the GPU's shader-f16 feature; WebLLM
+// would only fail after the download. Returns the start screen's message
+// when this device cannot run any version, else null. Dev only: `?no-f16`
+// previews it.
+export async function gpuProblem() {
+  if (!HAS_WEBGPU) return null;
+  const noF16 = "この端末のGPUは16bit浮動小数（shader-f16）に対応していないため、kobajinAIを動かせません。";
+  if (DEV_FLAGS.has("no-f16")) return noF16;
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) return "このブラウザではGPUを使えないため、kobajinAIを動かせません。";
+    return adapter.features.has("shader-f16") ? null : noF16;
+  } catch {
+    return null; // let WebLLM try and report its own error
+  }
+}
+
 // The timeline's prompts are short: the system prompt, at most three
 // memories, a few log lines, and up to 120 new tokens, well under 1,500
 // tokens in all. A 2,048-token window instead of the bundles' 4,096
@@ -28,7 +45,6 @@ async function lib() {
   if (!webllm) {
     const [mlc, request] = await Promise.all([import("@mlc-ai/web-llm"), import("../chat_request.js")]);
     const appConfig = request.buildAppConfig();
-    if (!appConfig) throw new Error(`このバージョンのWebLLMに ${request.BASE_MODEL_ID} がありません`);
     const ids = new Set(MODELS.map((model) => model.id));
     appConfig.model_list = appConfig.model_list.map((item) => (ids.has(item.model_id)
       ? { ...item, overrides: { ...item.overrides, context_window_size: CONTEXT_WINDOW } }
