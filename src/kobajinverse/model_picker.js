@@ -15,7 +15,9 @@ import { posts } from "./state.js";
 // storage it needs and that 8 GB machines may struggle. Starting
 // downloads that version once (about 2.4 GB for a Qwen3.5-4B version, less
 // for the smaller ones; FAMILIES in models.js) and keeps it in this
-// browser; only the chosen version is downloaded and loaded.
+// browser; only the chosen version is downloaded and loaded. The first
+// choice is the version closest to kobajin, or the light version on a
+// low-memory device (LOW_MEMORY_DEVICE below).
 //
 // Once a version has come online here, the page remembers it
 // (STARTED_KEY) and, on later visits, loads it again by itself if it is
@@ -36,7 +38,23 @@ const write = (key, value) => { try { if (value === null) localStorage.removeIte
 const SPARE_BYTES = 0.8e9;
 const GB = 1e9;
 
-let chosen = findModel(read(MODEL_KEY) || DEFAULT_VERSION).version;
+// The lightest published version (FAMILIES in models.js), if any.
+const lightest = () => MODELS.filter((model) => familyOf(model).light).at(-1) || null;
+
+// A device that probably cannot run a Qwen3.5-4B version: it reports less
+// than 8 GB (navigator.deviceMemory, Chromium only, capped at 8), or it is a
+// phone or tablet (Safari reports no memory; iPadOS presents itself as a Mac
+// with a touch screen).
+const DEVICE_MEMORY = typeof navigator.deviceMemory === "number" ? navigator.deviceMemory : null;
+const MOBILE = navigator.userAgentData?.mobile
+  ?? (/iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1));
+const LOW_MEMORY_DEVICE = (DEVICE_MEMORY !== null && DEVICE_MEMORY < 8) || MOBILE;
+
+// Owner decision (2026-11-22): a low-memory device starts on the light
+// version; others start on the version closest to kobajin. A version the
+// visitor picked before (MODEL_KEY) still wins.
+const recommended = () => (LOW_MEMORY_DEVICE && lightest()?.version) || DEFAULT_VERSION;
+let chosen = findModel(read(MODEL_KEY) || recommended()).version;
 // checking | idle | loading | online | error | elsewhere | unsupported
 let state = !HAS_WEBGPU ? "unsupported" : read(STARTED_KEY) ? "checking" : "idle";
 let progress = { ratio: 0, text: "" };
@@ -52,8 +70,6 @@ export const modelReady = new Promise((resolve) => { markReady = resolve; });
 const percent = () => `${Math.round(progress.ratio * 100)}%`;
 const size = (bytes) => `約${(bytes / GB).toFixed(1)}GB`;
 const family = () => familyOf(findModel(chosen));
-// The lightest published version, suggested to low-memory devices.
-const lightest = () => MODELS.filter((model) => familyOf(model).light).at(-1) || null;
 
 function chipText() {
   if (state === "online") return `kobajinAI ${chosen}`;
@@ -120,20 +136,20 @@ function needs(fam) {
 }
 
 // Storage and memory notes on the start screen. The memory note is always
-// there; a device that reports less than 8 GB (navigator.deviceMemory,
-// Chromium only, capped at 8) gets a stronger one when the chosen version
-// is not a light one, pointing to the light version if one is published.
+// there; a low-memory device (LOW_MEMORY_DEVICE) gets a stronger one when
+// the chosen version is not a light one, pointing to the light version if
+// one is published.
 function renderNotes() {
   const fam = family();
   const need = needs(fam);
-  const memory = navigator.deviceMemory;
-  const lowMemory = typeof memory === "number" && memory < 8 && !fam.light;
+  const lowMemory = LOW_MEMORY_DEVICE && !fam.light;
   const light = lightest();
+  const device = DEVICE_MEMORY !== null && DEVICE_MEMORY < 8 ? `この端末のメモリは${DEVICE_MEMORY}GB程度のようです。` : "スマホやタブレットでは、";
   $("gate-memory").textContent = !lowMemory
     ? need.warn
     : light
-      ? `この端末のメモリは${memory}GB程度のようです。${chosen} はおそらく動きません。軽量版の ${light.version} を選んでください。`
-      : `この端末のメモリは${memory}GB程度のようです。kobajinAIはおそらく動きません。`;
+      ? `${device}${chosen} はおそらく動きません。軽量版の ${light.version} を選んでください。`
+      : `${device}kobajinAIはおそらく動きません。`;
   $("gate-memory").closest("li").dataset.warn = String(lowMemory);
   const download = size(fam.downloadBytes);
   const lowStorage = freeBytes !== null && freeBytes < fam.downloadBytes + SPARE_BYTES && !cached.has(chosen);
@@ -160,11 +176,11 @@ function render() {
   $("model-versions").innerHTML = MODELS.map((model) => `<label class="version">
       <input type="radio" name="model-version" value="${model.version}"${model.version === chosen ? " checked" : ""}${locked ? " disabled" : ""} />
       <span class="version-copy">
-        <span class="version-name">${model.version}${model.version === DEFAULT_VERSION ? '<span class="badge alt">いちばんkobajinに近い</span>' : ""}${familyOf(model).light ? '<span class="badge you">軽量</span>' : ""}${cached.has(model.version) ? '<span class="badge you">保存済み</span>' : ""}</span>
+        <span class="version-name">${model.version}${model.version === DEFAULT_VERSION ? '<span class="badge alt">いちばんkobajinに近い</span>' : ""}${familyOf(model).light ? '<span class="badge you">軽量</span>' : ""}${LOW_MEMORY_DEVICE && model.version === recommended() ? '<span class="badge alt">この端末におすすめ</span>' : ""}${cached.has(model.version) ? '<span class="badge you">保存済み</span>' : ""}</span>
         <span class="version-note">${escapeHtml(model.note || model.summary)}</span>
       </span>
     </label>`).join("");
-  $("gate-version").innerHTML = MODELS.map((model) => `<option value="${model.version}"${model.version === chosen ? " selected" : ""}>${model.version}${model.version === DEFAULT_VERSION ? "（いちばんkobajinに近い）" : ""}${familyOf(model).light ? "・軽量" : ""}${cached.has(model.version) ? "・保存済み" : ""}</option>`).join("");
+  $("gate-version").innerHTML = MODELS.map((model) => `<option value="${model.version}"${model.version === chosen ? " selected" : ""}>${model.version}${model.version === DEFAULT_VERSION ? "（いちばんkobajinに近い）" : ""}${familyOf(model).light ? "・軽量" : ""}${LOW_MEMORY_DEVICE && model.version === recommended() ? "・この端末におすすめ" : ""}${cached.has(model.version) ? "・保存済み" : ""}</option>`).join("");
   $("gate-version").disabled = locked || state === "loading";
 
   const action = state === "online" || state === "loading" ? "stop" : "start";
