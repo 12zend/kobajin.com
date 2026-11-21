@@ -6,7 +6,7 @@ A static website for kobajinAI, an experimental web-based twin of kobajin. The s
 
 The whole page is `index.html`: HTML, CSS, and one module script.
 
-- The timeline shows short posts (about 10 characters) from alternate kobajin accounts (`@kobajin_fake`, `@kojabean`, `@jibikobean`, …), generated on load and every 14–30 seconds while the tab is visible.
+- The timeline shows short posts (about 10 characters) from alternate kobajin accounts (`@kobajin_fake`, `@kojabean`, `@jibikobean`, …), generated on load and every 14–30 seconds while the tab is visible. Account icons are kobajin's own, in `public/icons/` (`12zend` is kobajin's other name). Accounts without an icon of their own show a recolored one.
 - When a visitor posts, `@kobajin` adds a 🤔 reaction after a short random delay, then other accounts raise the 🤔 count one by one. kobajinAI judges the post; if it likes it, 👍 appears and grows. Two or three accounts reply in 10 characters or fewer, each shown as typing first.
 - The right sidebar shows "いまどうしてる？" trend tags generated the same way, plus the list of accounts. Below 1000 px the trends move to a chip row above the timeline.
 

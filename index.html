@@ -52,26 +52,17 @@
       .nav, .side { position: sticky; top: 0; height: 100vh; }
       .timeline { border-inline: 1px solid var(--line); min-height: 100vh; min-width: 0; }
 
-      /* ---------- avatar: the same face in another color ---------- */
+      /* ---------- avatar: kobajin's own icons ---------- */
       .avatar {
-        --hue: 230;
         position: relative;
         flex: none;
         width: 40px;
         height: 40px;
         border-radius: 50%;
-        background: hsl(var(--hue) 62% 58%);
+        background: var(--surface-3);
       }
-      .avatar::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: hsl(var(--hue) 70% 96%);
-        -webkit-mask: url(/logo.svg) center / 60% no-repeat;
-        mask: url(/logo.svg) center / 60% no-repeat;
-      }
+      .avatar img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
       .avatar.visitor { background: #3a3d44; }
-      .avatar.visitor::before { -webkit-mask: none; mask: none; background: none; }
       .avatar.visitor::after {
         content: "？";
         position: absolute;
@@ -230,8 +221,6 @@
       .dots i:nth-child(3) { animation-delay: 0.3s; }
 
       .skeleton { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
-      .skeleton .avatar { background: var(--surface-3); }
-      .skeleton .avatar::before { display: none; }
       .sk-lines { flex: 1; display: grid; gap: 8px; padding-top: 4px; }
       .sk-lines span { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
       .sk-lines span:first-child { width: 40%; }
@@ -586,13 +575,16 @@
       // 3. State
       // =====================================================================
 
-      const SELF = { id: "kobajin", name: "kobajin", handle: "kobajin", hue: 228, role: "本人" };
+      // Icons are kobajin's own (public/icons/). Accounts without an icon of
+      // their own wear a recolored one; `filter` is a CSS filter.
+      const SELF = { id: "kobajin", name: "kobajin", handle: "kobajin", icon: "/icons/kobajin.webp", role: "本人" };
       const ALTS = [
-        { id: "kobajin_fake", name: "kobajin（偽）", handle: "kobajin_fake", hue: 274 },
-        { id: "kojabean", name: "こじゃびーん", handle: "kojabean", hue: 28 },
-        { id: "jibikobean", name: "じびこびーん", handle: "jibikobean", hue: 148 },
-        { id: "kobajin_sub", name: "kobajin サブ垢", handle: "kobajin_sub", hue: 340 },
-        { id: "nijikoba", name: "にじこば", handle: "nijikoba", hue: 190 },
+        { id: "12zend", name: "12zend", handle: "12zend", icon: "/icons/12zend.webp", role: "別名義" },
+        { id: "kobajin_fake", name: "kobajin（偽）", handle: "kobajin_fake", icon: "/icons/kobajin2.webp" },
+        { id: "kojabean", name: "こじゃびーん", handle: "kojabean", icon: "/icons/kobajin3.webp" },
+        { id: "jibikobean", name: "じびこびーん", handle: "jibikobean", icon: "/icons/kobajin3.webp", filter: "hue-rotate(125deg)" },
+        { id: "kobajin_sub", name: "kobajin サブ垢", handle: "kobajin_sub", icon: "/icons/kobajin.webp", filter: "invert(1)" },
+        { id: "nijikoba", name: "にじこば", handle: "nijikoba", icon: "/icons/kobajin3.webp", filter: "hue-rotate(220deg)" },
       ];
       const VISITOR = { id: "visitor", name: "あなた", handle: "visitor", visitor: true };
       const ACCOUNTS = Object.fromEntries([SELF, ...ALTS, VISITOR].map((account) => [account.id, account]));
@@ -620,7 +612,8 @@
 
       function avatar(account, size = "") {
         if (account.visitor) return `<span class="avatar ${size} visitor" aria-hidden="true"></span>`;
-        return `<span class="avatar ${size}" style="--hue:${account.hue}" aria-hidden="true"></span>`;
+        const filter = account.filter ? ` style="filter:${account.filter}"` : "";
+        return `<span class="avatar ${size}" aria-hidden="true"><img src="${account.icon}" alt="" width="40" height="40" decoding="async"${filter} /></span>`;
       }
 
       function ago(ts) {
@@ -738,7 +731,7 @@
       function renderMembers() {
         $("members").innerHTML = [SELF, ...ALTS].map((account) => {
           const typing = (typingCounts.get(account.id) || 0) > 0;
-          const status = typing ? "入力中…" : account.role ? "本人・オンライン" : "オンライン";
+          const status = typing ? "入力中…" : account.role ? `${account.role}・オンライン` : "オンライン";
           return `<div class="member" data-typing="${typing}">${avatar(account, "sm")}<div class="member-copy"><div class="member-name">${escapeHtml(account.name)}</div><div class="member-status">@${account.handle} · ${status}</div></div></div>`;
         }).join("");
       }
