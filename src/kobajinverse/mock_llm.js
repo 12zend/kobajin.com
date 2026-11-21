@@ -1,3 +1,4 @@
+import { HARSH } from "./safety.js";
 import { chars, pick, rand, shuffle, sleep } from "./util.js";
 
 // Mock inference: canned lines with the same complete(task, input) as
@@ -66,7 +67,8 @@ export function createMockLLM() {
   // A line the mock did not write itself (a reply such as 「ラーメンいいな」)
   // has no stored meaning, so it says what it picked up on.
   function elaborations(parent) {
-    const known = ELABORATIONS[parent];
+    // A voiced line (なんで月曜って存在するん（たぶん）) still has its meaning.
+    const known = ELABORATIONS[parent] || ELABORATIONS[Object.keys(ELABORATIONS).find((line) => parent.includes(line))];
     if (known) return known;
     const word = keyword(parent);
     return word
@@ -77,7 +79,7 @@ export function createMockLLM() {
   // "harsh" comes first: insults and threats get pushback, never an
   // echo or agreement. The lookaheads keep 少しねむい and カスタム out.
   const TONES = [
-    ["harsh", /死ね|しね(?![ぁ-んァ-ヴ])|殺す|ころす|ぶっ殺|ぶっころ|ぶっとば|消えろ|きえろ|くたばれ|黙れ|だまれ|うざい|ウザい|きもい|キモい|カス(?![ァ-ヴ])|滅べ|滅びろ|爆破/],
+    ["harsh", HARSH],
     ["question", /[?？]\s*$|なんで|どう|なに|何|どっち/],
     ["funny", /草|笑|w\s*$|ｗ|ウケ|おもろ|じわ/],
     ["rough", /疲|眠|ねむ|寝|無理|つら|しんど|過密|忙|だる|痛|寒|暑|やば|終わ|詰|きつ|多すぎ|足りな|ない$/],
@@ -178,6 +180,25 @@ export function createMockLLM() {
       : NOUN_ECHOES[tone](word);
     return lines.filter((line) => chars(line).length <= 10);
   }
+  // Each alt account's style (accounts.js `voice`), bent onto a canned
+  // line now and then. Questions stay as they are (なんで月曜って存在
+  // するん、えらい reads wrong), and so does a bent line that would run long.
+  const VOICES = {
+    calm: [(t) => t.replace(/[！!]+$/, ""), (t) => (/[なねよわ]$/.test(t) ? null : `${t.replace(/[。！!]+$/, "")}な`)],
+    off: [(t) => `${t}（たぶん）`, (t) => t.replace(/えぐい/, "えぐみ深い").replace(/わかる/, "わかりみ"), (t) => `${t}、知らんけど`],
+    hype: [(t) => `${t.replace(/[。]+$/, "")}！`, (t) => `${t.replace(/[。]+$/, "")}！！`, (t) => `え、${t}！`],
+    sleepy: [(t) => `${t}〜`, (t) => `${t}…`, (t) => `${t}ねむ`],
+    low: [(t) => `正直${t}`, (t) => `${t}…`, (t) => `まあ${t}`],
+    kind: [(t) => `${t}、えらい`, (t) => `${t}！いいね`, (t) => (/[なねよわ]$/.test(t) ? null : `${t}な`)],
+  };
+  const QUESTIONISH = /[?？]|なんで|誰|どっち|どう|謎/;
+  function voiced(line, voice, max) {
+    const bends = VOICES[voice];
+    if (!bends || QUESTIONISH.test(line) || Math.random() < 0.4) return line;
+    const bent = pick(bends)(line);
+    return bent && chars(bent).length <= max ? bent : line;
+  }
+
   const TRENDS = [
     "#それはそう", "#たしかに？", "#言語化むずい", "#完全に理解した", "#天才の発想", "#情報量が多い",
     "#なんで月曜", "#あと一歩", "#優勝", "#もう寝たい", "#動いたけど謎", "#シンプルが一番",
@@ -202,6 +223,26 @@ export function createMockLLM() {
     return (bare.match(/[ァ-ヴ][ァ-ヴー]+/) || bare.match(/[A-Za-z]{2,}/) || kanji)[0] || "";
   }
 
+  // Replies follow the post: greetings, answers when addressed, its own
+  // words, then its tone.
+  function mockReply(input) {
+    const text = (input.text || "").trim();
+    const others = input.others || [];
+    const fresh = (list) => list.filter((line) => !others.includes(line));
+    const greeting = GREETINGS.find(([pattern]) => pattern.test(text));
+    if (greeting && fresh(greeting[1]).length) return pick(fresh(greeting[1]));
+    const answers = input.addressed && answer(text);
+    if (answers) return pick(fresh(answers).length ? fresh(answers) : answers);
+    const tone = replyTone(text);
+    const echoable = tone !== "question" || chars(text) <= 7;
+    const echo = echoable ? fresh(echoes(keyword(text), tone)) : [];
+    // The first reply picks up the post's own words; later ones
+    // mostly react to its tone.
+    const useEcho = echo.length && (others.length === 0 ? Math.random() < 0.85 : Math.random() < 0.3);
+    const pool = useEcho ? echo : fresh(TONE_REPLIES[tone]);
+    return pick(pool.length ? pool : TONE_REPLIES[tone]);
+  }
+
   return {
     name: "mock",
     async complete(task, input) {
@@ -212,25 +253,9 @@ export function createMockLLM() {
         const line = pick(fresh.length ? fresh : lines);
         used.push(line);
         if (used.length > 20) used.shift();
-        return line;
+        return voiced(line, input.voice, 22);
       }
-      if (task === "reply") {
-        const text = (input.text || "").trim();
-        const others = input.others || [];
-        const fresh = (list) => list.filter((line) => !others.includes(line));
-        const greeting = GREETINGS.find(([pattern]) => pattern.test(text));
-        if (greeting && fresh(greeting[1]).length) return pick(fresh(greeting[1]));
-        const answers = input.addressed && answer(text);
-        if (answers) return pick(fresh(answers).length ? fresh(answers) : answers);
-        const tone = replyTone(text);
-        const echoable = tone !== "question" || chars(text) <= 7;
-        const echo = echoable ? fresh(echoes(keyword(text), tone)) : [];
-        // The first reply picks up the post's own words; later ones
-        // mostly react to its tone.
-        const useEcho = echo.length && (others.length === 0 ? Math.random() < 0.85 : Math.random() < 0.3);
-        const pool = useEcho ? echo : fresh(TONE_REPLIES[tone]);
-        return pick(pool.length ? pool : TONE_REPLIES[tone]);
-      }
+      if (task === "reply") return voiced(mockReply(input), input.voice, 10);
       if (task === "elaborate") {
         const lines = elaborations(input.parent || "");
         const fresh = lines.filter((line) => !(input.others || []).includes(line));

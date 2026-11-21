@@ -2,6 +2,7 @@ import { VISITOR } from "./accounts.js";
 import { choreograph } from "./actions.js";
 import { $, toast } from "./dom.js";
 import { setView, showPost, view } from "./feed.js";
+import { wakeModel } from "./model_picker.js";
 import { openPicker } from "./picker.js";
 import { newPost } from "./state.js";
 import { trendTags } from "./trends.js";
@@ -46,8 +47,10 @@ export function insertText(text, { space = true } = {}) {
   input.setSelectionRange(caret, caret);
 }
 
+const onTimeline = () => view === "all" || view === "following";
+
 export function focusComposer() {
-  if (view === "bookmarks") setView("all");
+  if (!onTimeline()) setView("all");
   window.scrollTo({ top: 0, behavior: "smooth" });
   input.focus({ preventScroll: true });
 }
@@ -67,7 +70,8 @@ export function setupComposer() {
     if (!text || chars(text).length > LIMIT) return;
     input.value = "";
     syncComposer();
-    if (view === "bookmarks") setView("all");
+    if (!onTimeline()) setView("all");
+    wakeModel();
     const post = newPost(VISITOR.id, text);
     showPost(post);
     window.scrollTo({ top: 0, behavior: "smooth" });

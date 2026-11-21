@@ -1,4 +1,5 @@
 import { createMockLLM } from "./mock_llm.js";
+import { PROMPTS } from "./prompts.js";
 
 // Inference layer
 //
@@ -7,14 +8,43 @@ import { createMockLLM } from "./mock_llm.js";
 //     llm.complete(task, input) -> Promise<string>   (raw model text)
 //
 // task is one of "post" | "reply" | "elaborate" | "react" | "judge" |
-// "trend". PROMPTS (prompts.js) say what each task asks; createMockLLM()
-// (mock_llm.js) ignores them and returns canned text. To switch to WebLLM,
-// write createWebLLM(engine) with the same complete(): send
-// PROMPTS[task].system plus PROMPTS[task].user(input) to
-// engine.chat.completions.create with PROMPTS[task].decoding and
-// extra_body: { enable_thinking: false }, and return
-// choices[0].message.content. Then export it here instead of the mock.
-// Cleaning, length limits, and parsing live in brain.js, so the swap only
-// returns raw text.
+// "trend". The page starts on the mock (mock_llm.js), which ignores
+// PROMPTS and returns canned text. When the visitor starts a kobajinAI
+// version (model_picker.js, engine.js), llm.use() swaps in createWebLLM()
+// and back to the mock when it stops. Cleaning, length limits, gates, and
+// parsing live in brain.js, so both return raw text.
+//
+// llm.source names what wrote a line: "mock" or the version ("v2").
 
-export const llm = createMockLLM();
+// `onFail` hears about an engine error (the call still rejects).
+export function createWebLLM(engine, version, onFail = () => {}) {
+  return {
+    name: "webllm",
+    version,
+    async complete(task, input) {
+      const prompt = PROMPTS[task];
+      if (!prompt) throw new Error(`unknown task: ${task}`);
+      try {
+        const reply = await engine.chat.completions.create({
+          messages: prompt.messages(input),
+          ...prompt.decoding,
+          extra_body: { enable_thinking: false },
+        });
+        return reply.choices[0]?.message?.content || "";
+      } catch (error) {
+        onFail(error);
+        throw error;
+      }
+    },
+  };
+}
+
+const mock = createMockLLM();
+let active = mock;
+
+export const llm = {
+  get name() { return active.name; },
+  get source() { return active.name === "mock" ? "mock" : active.version; },
+  complete: (task, input) => active.complete(task, input),
+  use(next) { active = next || mock; },
+};

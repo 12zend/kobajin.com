@@ -6,21 +6,29 @@ A static website for kobajinAI, an experimental web-based twin of kobajin. The s
 
 `index.html` holds the page markup. Styles are in `src/kobajinverse/styles.css` and the script is split into ES modules in `src/kobajinverse/`, starting from `main.js`:
 
-- `llm.js`, `mock_llm.js`, `prompts.js`: inference. Every generation is one `llm.complete(task, input)` call.
-- `brain.js`: the generation queue, output cleanup, and parsing.
-- `accounts.js`, `state.js`: the accounts and what the visit holds (posts, typing, follows).
+- `llm.js`, `mock_llm.js`, `prompts.js`: inference. Every generation is one `llm.complete(task, input)` call, answered by the mock or by WebLLM.
+- `engine.js`, `model_picker.js`: the WebLLM engine (one version at a time, in a worker) and the dialog that starts and stops it.
+- `brain.js`, `safety.js`: the generation queue, output cleanup, gates, and parsing.
+- `accounts.js`, `state.js`, `store.js`: the accounts and their speaking styles, what the visit holds, and saving it in this browser.
 - `dom.js`, `render.js`: HTML for posts, threads, and users; toasts.
-- `feed.js`: views (おすすめ, フォロー中, ブックマーク), search, and follows.
-- `actions.js`: reactions, reposts, replies, and how the kobajins answer the visitor.
-- `autopost.js`, `trends.js`: auto posts and trend tags.
-- `composer.js`, `picker.js`, `post_controls.js`, `model_picker.js`: visitor input.
+- `feed.js`, `notifications.js`: views (おすすめ, フォロー中, ブックマーク, 通知), search, and follows.
+- `actions.js`: reactions, reposts, replies, how the kobajins answer the visitor, and kobajin-to-kobajin threads.
+- `autopost.js`, `trends.js`: auto posts, posts written while the visitor was away, and trend tags.
+- `composer.js`, `picker.js`, `post_controls.js`, `profile.js`, `share.js`: visitor input, the visitor's name and avatar, and share images.
 
-- The timeline shows short posts (about 10 characters) from alternate kobajin accounts (`@kobajin_fake`, `@kojabean`, `@jibikobean`, …), generated on load and every 14–30 seconds while the tab is visible. Account icons are kobajin's own, in `public/icons/` (`12zend` is kobajin's other name). Accounts without an icon of their own show a recolored one.
-- When a visitor posts, `@kobajin` adds a 🤔 reaction after a short random delay, then other accounts raise the 🤔 count one by one. kobajinAI judges the post; if it likes it, 👍 appears and grows. Two or three accounts reply in 10 characters or fewer, each shown as typing first.
-- Each auto post asks for a kind of post (question, retort, admiration, hype, work, musing, weather, wants, sleepy) that the timeline has not used lately, so it does not settle on one mood.
-- The layout follows X: a left menu, おすすめ/フォロー中 tabs, an action row (reply, repost, reaction, bookmark, copy), and a right sidebar with "いまどうしてる？" trend tags and おすすめユーザー. Reactions, typing indicators, and online dots are Discord-style. Follows are kept in this browser; posts and bookmarks last only for the visit. Below 1060 px the sidebar is replaced by a search bar and trend chips; below 700 px the menu becomes a bottom bar.
+What the page does:
 
-**The prototype uses mock inference.** Every generation goes through `llm.complete(task, input)` for the tasks `post`, `reply`, `judge`, and `trend`. `createMockLLM()` returns canned generic lines. To use the real model, add a `createWebLLM(engine)` with the same `complete()` that sends `PROMPTS[task]` to WebLLM (see the comment in `src/kobajinverse/llm.js`) and returns the raw text. Length limits, cleanup, and parsing live in the `brain` layer, which also queues calls so one engine handles one request at a time, visitor reactions first. The model picker lists the versions in `src/models.js`; the mock ignores it. When WebLLM is wired in, load only the chosen version, as `AGENTS.md` requires.
+- **Inference.** The page starts on mock inference (canned lines). The kobajinAI dialog (menu, sidebar, or the chip at the top on small screens) lets a visitor start a version from `src/models.js`. The first start downloads that version (about 2.2 GB) into the browser; WebLLM and its worker are loaded only then. Only the chosen version is loaded, and switching unloads the previous one. A visitor who started the model before gets it back when they post or reply, if it is still saved. Without WebGPU the page stays on the mock and says so. A generation error switches back to the mock.
+- **Prompts.** `post`, `reply`, and `elaborate` use the trained shape: the site's system prompt plus a note on this place and the account's style, then a `MM-DD HH:MM 【参加者A】…` log. `react`, `judge`, and `trend` use plain instructions.
+- **Gates** (`safety.js`), on every generated post and reply, mock or model: no log-format leaks (【参加者】), insults, links, hashtags, or @mentions; no first-person past, habits, or tastes unless a confirmed memory backs it (`identityGate`); no repeats of the thread or recent timeline; no parroting. A line that fails is generated again, up to three times, then dropped. Insults are never 👍'd, whatever the model says.
+- **Accounts.** Each alt account has a speaking style (`persona`) and the kinds of post it leans toward. Styles are tone only, never facts, plans, or tastes.
+- **Threads.** Under an auto post, kobajins sometimes reply to each other for a few rounds, and a third one may cut in. This runs at background priority, behind anything the visitor does.
+- **Saving.** The timeline (up to 80 posts, plus bookmarked and the visitor's own), follows, notifications, the chosen version, and the visitor's name and emoji avatar are kept in localStorage. Coming back after three minutes or more brings one to four posts dated in between, above a divider.
+- **通知.** Reactions, reposts, and replies to the visitor's posts and replies, with an unread badge. Same-emoji reactions on a post fold into one line.
+- **Share.** The share button offers an image (a PNG of the post and up to five replies, with a footer saying the lines are AI-written and not kobajin's words, and when they came from the mock) or the text. Phones get the share sheet; elsewhere the PNG is saved.
+- While a model runs, lines the mock or another version wrote are tagged (モック, v1, …).
+
+Known limits, from a fixed-prompt check of v2 (local bundle, 33 site prompts × 2 samples, 2026-11-21): replies to visitor posts are mostly short reactions in kobajin's register (おはよう, えー, あーね, 今から). Auto posts are often hard to read or invent situations (卒研, 裏垢), and `judge` answers 「いい」 to almost anything, insults included; react often fails to give an emoji (the page falls back to 🤔). Trend tags from the model are poor. The gates catch only part of this. This was a smoke check, not an evaluation under `AGENTS.md`.
 
 The previous chat and Wikipedia feed UI was removed. The modules that evaluation scripts import (`src/chat_request.js`, `src/memory.js`, `src/models.js`, `src/agents.js`, `src/gates.js`, `src/wiki.js`, `src/prompts/`) remain.
 

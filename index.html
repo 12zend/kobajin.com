@@ -25,6 +25,9 @@
       <symbol id="i-hash" viewBox="0 0 24 24"><path d="M5 9h15M4 15h15M10 3 8 21M16 3l-2 18" /></symbol>
       <symbol id="i-back" viewBox="0 0 24 24"><path d="M20 12H4m6-6-6 6 6 6" /></symbol>
       <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6" /></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0" /></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></symbol>
+      <symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" /></symbol>
     </svg>
 
     <div class="app">
@@ -32,12 +35,14 @@
         <a class="logo-link" href="/" aria-label="kobajinverse ホーム"><span class="brand-mark" aria-hidden="true"></span></a>
         <button class="nav-item" type="button" data-nav="home" aria-current="page"><svg class="i" aria-hidden="true"><use href="#i-home" /></svg><span>ホーム</span></button>
         <button class="nav-item" type="button" data-nav="search"><svg class="i" aria-hidden="true"><use href="#i-search" /></svg><span>話題を検索</span></button>
+        <button class="nav-item" type="button" data-nav="notifications"><span class="nav-icon"><svg class="i" aria-hidden="true"><use href="#i-bell" /></svg><b class="note-badge" hidden></b></span><span>通知</span></button>
         <button class="nav-item" type="button" data-nav="bookmarks"><svg class="i" aria-hidden="true"><use href="#i-bookmark" /></svg><span>ブックマーク</span></button>
+        <button class="nav-item" type="button" data-open-model><svg class="i" aria-hidden="true"><use href="#i-chip" /></svg><span>kobajinAI</span></button>
         <button class="nav-post" type="button" data-nav="compose" aria-label="ポストする"><svg class="i" aria-hidden="true"><use href="#i-feather" /></svg><span>ポストする</span></button>
-        <div class="me-chip">
+        <button class="me-chip" type="button" data-nav="profile" aria-label="プロフィールを編集">
           <span class="avatar visitor" aria-hidden="true"></span>
           <span class="me-copy"><span class="me-name">あなた</span><br /><span class="handle">@visitor</span></span>
-        </div>
+        </button>
       </nav>
 
       <main class="timeline" aria-label="タイムライン">
@@ -48,7 +53,7 @@
               <input class="search-input" type="search" placeholder="検索" autocomplete="off" aria-label="タイムラインを検索" />
               <svg class="i" aria-hidden="true"><use href="#i-search" /></svg>
             </div>
-            <span class="mock-tag mock-only">モック</span>
+            <button class="model-chip" id="model-chip" type="button" data-open-model aria-label="kobajinAIのモデル">モック</button>
           </div>
           <div class="tabs" id="tabs" role="tablist" aria-label="タイムライン">
             <button class="tab" type="button" role="tab" data-view="all" aria-selected="true">おすすめ</button>
@@ -56,7 +61,7 @@
           </div>
           <div class="view-title" id="view-title" hidden>
             <button class="round" type="button" data-nav="home" aria-label="ホームに戻る"><svg class="i" aria-hidden="true"><use href="#i-back" /></svg></button>
-            <div><h1>ブックマーク</h1><p>@visitor</p></div>
+            <div><h1 id="view-title-text">ブックマーク</h1><p>@visitor</p></div>
           </div>
         </header>
 
@@ -80,6 +85,7 @@
         <div class="new-posts" id="new-posts" hidden><button type="button" id="new-posts-button"></button></div>
 
         <section id="feed" aria-label="ポスト"></section>
+        <section id="notes" class="notes" aria-label="通知" hidden></section>
         <div id="empty"></div>
       </main>
 
@@ -94,9 +100,8 @@
           <p class="card-text">ここにいるのは全員kobajinAI。ポストすると、kobajinたちが反応します。</p>
           <div class="model-row">
             <span class="model-dot" aria-hidden="true"></span>
-            <span id="model-state">モック推論</span>
-            <label class="sr-only" for="model-version">モデル</label>
-            <select id="model-version"></select>
+            <span id="model-state">モック推論で動作中</span>
+            <button class="model-open" type="button" data-open-model>モデル</button>
           </div>
         </section>
 
@@ -118,9 +123,49 @@
     <nav class="bottom-bar" aria-label="メニュー">
       <button type="button" data-nav="home" aria-label="ホーム" aria-current="page"><svg class="i" aria-hidden="true"><use href="#i-home" /></svg></button>
       <button type="button" data-nav="search" aria-label="話題を検索"><svg class="i" aria-hidden="true"><use href="#i-search" /></svg></button>
+      <button type="button" data-nav="notifications" aria-label="通知"><span class="nav-icon"><svg class="i" aria-hidden="true"><use href="#i-bell" /></svg><b class="note-badge" hidden></b></span></button>
       <button type="button" data-nav="bookmarks" aria-label="ブックマーク"><svg class="i" aria-hidden="true"><use href="#i-bookmark" /></svg></button>
+      <button type="button" data-nav="profile" aria-label="プロフィール"><svg class="i" aria-hidden="true"><use href="#i-user" /></svg></button>
     </nav>
     <button class="fab" type="button" data-nav="compose" aria-label="ポストする"><svg class="i" aria-hidden="true"><use href="#i-feather" /></svg></button>
+
+    <dialog class="sheet" id="model-dialog" aria-labelledby="model-title">
+      <div class="sheet-head">
+        <h2 id="model-title">kobajinAIをこの端末で動かす</h2>
+        <button class="round" type="button" data-close aria-label="閉じる">✕</button>
+      </div>
+      <p class="sheet-text">選んだバージョンがこのブラウザの中で投稿・返信・リアクションを書きます。書いた内容はどこにも送られません。動かしていない間は、モック推論（用意した定型文）で動きます。</p>
+      <fieldset class="versions">
+        <legend class="sr-only">バージョン</legend>
+        <div id="model-versions"></div>
+      </fieldset>
+      <div class="model-progress" id="model-progress" hidden><span id="model-progress-bar"></span></div>
+      <p class="sheet-status" id="model-status" role="status"></p>
+      <button class="post-button wide" id="model-start" type="button">起動</button>
+      <p class="sheet-foot">生成された文は実在のkobajinの発言ではありません。作り話がまじることがあります。</p>
+    </dialog>
+
+    <dialog class="sheet" id="profile-dialog" aria-labelledby="profile-title">
+      <form id="profile-form" method="dialog">
+        <div class="sheet-head">
+          <h2 id="profile-title">プロフィール</h2>
+          <button class="round" type="button" data-close aria-label="閉じる">✕</button>
+        </div>
+        <div class="profile-top">
+          <span class="avatar visitor big" id="profile-preview" aria-hidden="true"></span>
+          <label class="field">
+            <span>表示名</span>
+            <input id="profile-name" type="text" autocomplete="nickname" placeholder="あなた" />
+          </label>
+        </div>
+        <p class="field-label">アイコン</p>
+        <div class="choices" id="profile-emoji"></div>
+        <p class="field-label">背景の色</p>
+        <div class="choices" id="profile-color"></div>
+        <p class="sheet-foot">このブラウザにだけ保存されます。</p>
+        <button class="post-button wide" type="submit">保存</button>
+      </form>
+    </dialog>
 
     <div class="sr-only" id="live" role="status" aria-live="polite"></div>
 

@@ -1,9 +1,11 @@
 import { ACCOUNTS, VISITOR } from "./accounts.js";
-import { $, escapeHtml } from "./dom.js";
+import { $, escapeHtml, toast } from "./dom.js";
+import { markAllRead, renderNotifications } from "./notifications.js";
 import { avatar, feedEl, icon, postHtml, renderUsers, userRowsHtml } from "./render.js";
 import { FOLLOW_KEY, following, pending, posts } from "./state.js";
+import { scheduleSave } from "./store.js";
 
-// Views and filters: おすすめ, フォロー中, ブックマーク, search. New posts
+// Views and filters: おすすめ, フォロー中, ブックマーク, 通知, search. New posts
 // enter the feed through showPost() and arrive().
 
 export let view = "all";
@@ -23,6 +25,7 @@ function postElement(post) {
 export function showPost(post) {
   feedEl.prepend(postElement(post));
   applyFilters();
+  scheduleSave();
 }
 
 // New posts wait behind a pill while the reader is scrolled down, so the
@@ -54,6 +57,7 @@ function inView(post) {
 const isVisible = (post) => inView(post) && matchesSearch(post);
 
 export function applyFilters() {
+  if (view === "notifications") { $("empty").innerHTML = ""; return; }
   let shown = 0;
   feedEl.querySelectorAll(".post").forEach((el) => {
     const visible = isVisible(posts.get(el.dataset.id));
@@ -73,18 +77,41 @@ export function applyFilters() {
   }
 }
 
+const TITLES = { bookmarks: "ブックマーク", notifications: "通知" };
+
 export function setView(next) {
   view = next;
+  const titled = Boolean(TITLES[view]);
   document.querySelectorAll(".tab").forEach((tab) => tab.setAttribute("aria-selected", String(tab.dataset.view === view)));
-  $("tabs").hidden = view === "bookmarks";
-  $("view-title").hidden = view !== "bookmarks";
-  $("composer").hidden = view === "bookmarks";
+  $("tabs").hidden = titled;
+  $("view-title").hidden = !titled;
+  $("view-title-text").textContent = TITLES[view] || "";
+  $("composer").hidden = titled;
+  $("trend-strip").hidden = titled;
+  feedEl.hidden = view === "notifications";
+  $("notes").hidden = view !== "notifications";
+  if (view === "notifications") {
+    renderNotifications(avatar, icon);
+    markAllRead();
+  }
+  const navFor = (v) => (TITLES[v] ? v : "home");
   document.querySelectorAll(".nav-item[data-nav], .bottom-bar [data-nav]").forEach((el) => {
-    const current = (el.dataset.nav === "home" && view !== "bookmarks") || (el.dataset.nav === "bookmarks" && view === "bookmarks");
-    if (current) el.setAttribute("aria-current", "page"); else el.removeAttribute("aria-current");
+    if (el.dataset.nav === navFor(view)) el.setAttribute("aria-current", "page"); else el.removeAttribute("aria-current");
   });
   applyFilters();
   window.scrollTo({ top: 0 });
+}
+
+// Opens a post from a notification: back to the timeline, scrolled to it.
+export function showPostById(id) {
+  setView("all");
+  const el = feedEl.querySelector(`[data-id="${CSS.escape(id)}"]`);
+  if (!el) return false;
+  el.scrollIntoView({ block: "center" });
+  el.classList.remove("flash");
+  void el.offsetWidth;
+  el.classList.add("flash");
+  return true;
 }
 
 export function setFollow(id, on) {
@@ -100,6 +127,11 @@ export function focusSearch() {
 }
 
 export function setupFeed() {
+  $("notes").addEventListener("click", (event) => {
+    const note = event.target.closest("[data-note-post]");
+    if (note && !showPostById(note.dataset.notePost)) toast("このポストはもう表示されていません");
+  });
+
   $("new-posts-button").addEventListener("click", () => {
     pending.splice(0).forEach(showPost);
     $("new-posts").hidden = true;

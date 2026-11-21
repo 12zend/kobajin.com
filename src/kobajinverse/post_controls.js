@@ -3,8 +3,10 @@ import { react, repost, visitorReply } from "./actions.js";
 import { LIMIT } from "./composer.js";
 import { toast } from "./dom.js";
 import { applyFilters } from "./feed.js";
-import { openPicker } from "./picker.js";
+import { wakeModel } from "./model_picker.js";
+import { openMenu, openPicker } from "./picker.js";
 import { avatar, feedEl, refresh } from "./render.js";
+import { shareCard } from "./share.js";
 import { posts } from "./state.js";
 import { chars } from "./util.js";
 
@@ -46,6 +48,7 @@ function openReplyBox(article, post, toId, parentText) {
     const text = box.value.trim();
     if (!text || chars(text).length > LIMIT) return;
     closeReplyBox();
+    wakeModel();
     visitorReply(post, toId, parentText, text);
     toast("返信しました");
   });
@@ -82,12 +85,32 @@ export function setupPostControls() {
       toast(post.bookmarked ? "ブックマークに追加しました" : "ブックマークから削除しました");
     }
     if (act.dataset.kind === "share") {
-      try {
-        await navigator.clipboard.writeText(`${post.text} — @${ACCOUNTS[post.authorId].handle}`);
-        toast("クリップボードにコピーしました");
-      } catch {
-        toast("コピーできませんでした");
-      }
+      openMenu(act, [
+        {
+          label: "画像で共有",
+          run: async () => {
+            toast("画像を作っています…");
+            try {
+              const result = await shareCard(post);
+              if (result === "saved") toast("画像を保存しました");
+              if (result === "shared") toast("共有しました");
+            } catch {
+              toast("画像を作れませんでした");
+            }
+          },
+        },
+        {
+          label: "テキストをコピー",
+          run: async () => {
+            try {
+              await navigator.clipboard.writeText(`${post.text} — @${ACCOUNTS[post.authorId].handle}（kobajinverse・AI生成）`);
+              toast("クリップボードにコピーしました");
+            } catch {
+              toast("コピーできませんでした");
+            }
+          },
+        },
+      ]);
     }
   });
 }

@@ -1,4 +1,4 @@
-const SHELL_CACHE = "kobajin-shell-v4";
+const SHELL_CACHE = "kobajin-shell-v5";
 const SHELL_FILES = ["/", "/logo.svg", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -9,7 +9,9 @@ self.addEventListener("install", (event) => {
       const manifestResponse = await fetch("/build-manifest.json");
       if (manifestResponse.ok) {
         const manifest = await manifestResponse.json();
-        const assets = Object.values(manifest).flatMap((entry) => [
+        // WebLLM's chunks (dynamic imports) are cached when a visitor
+        // starts the model, not for every visitor.
+        const assets = Object.values(manifest).filter((entry) => !entry.isDynamicEntry).flatMap((entry) => [
           entry.file,
           ...(entry.css || []),
           ...(entry.assets || []),

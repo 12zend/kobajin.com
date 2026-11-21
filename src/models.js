@@ -17,18 +17,21 @@ export const MODELS = [
     id: "kobajinAI-qwen35-4b-kobajin-clean-v1-8d6dab1-q4f16_1-MLC",
     url: `${REPO}/8d6dab15195505c8c92c2d9ceb99f2551239f2d4/v1/`,
     summary: "Real chats only. Casual voice; often ignores memories.",
+    note: "実際の会話だけで学習。くだけた口調だが、記憶はあまり使わない。",
   },
   {
     version: "v2",
     id: "kobajinAI-qwen35-4b-kobajin-clean-v2-1f9287d-q4f16_1-MLC",
     url: `${REPO}/1f9287d837eb311f5d0ab9262240ab2ed362d87c/v2/`,
     summary: "Real chats, plus practice using memories.",
+    note: "実際の会話に加えて、記憶の使い方を練習。関係ない記憶を混ぜることもある。",
   },
   {
     version: "v3",
     id: "kobajinAI-qwen35-4b-luna-v3-a2534a2-q4f16_1-MLC",
     url: `${REPO}/a2534a20253d54cce925307fbd76086498b09a11/`,
     summary: "Mostly Luna-written examples. Longer, advice-like replies.",
+    note: "Lunaが書いた例が中心。長めでアドバイス寄りの返事になりやすい。",
   },
 ];
 

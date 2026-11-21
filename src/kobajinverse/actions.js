@@ -1,26 +1,37 @@
 import { ACCOUNTS, ALTS, SELF, VISITOR } from "./accounts.js";
-import { brain } from "./brain.js";
+import { PRIORITY, brain } from "./brain.js";
 import { say } from "./dom.js";
+import { notify } from "./notifications.js";
 import { refresh, renderUsers } from "./render.js";
 import { typingCounts } from "./state.js";
 import { rand, randInt, shuffle, sleep } from "./util.js";
 
 // Actions: reactions, reposts, typing, and replies, and how the kobajins
-// answer what the visitor writes.
+// answer what the visitor writes and talk among themselves.
+
+// Anything a kobajin does to the visitor's post or reply is a
+// notification (notifications.js).
+const toVisitor = (post, accountId) => post.authorId === VISITOR.id && accountId !== VISITOR.id;
 
 export function react(post, emoji, accountId, { toggle = false } = {}) {
   if (!post.reactions.has(emoji)) post.reactions.set(emoji, new Set());
   const who = post.reactions.get(emoji);
   if (toggle && who.has(accountId)) who.delete(accountId);
   else if (who.has(accountId)) return;
-  else who.add(accountId);
+  else {
+    who.add(accountId);
+    if (toVisitor(post, accountId)) notify({ type: "reaction", post, actorId: accountId, emoji });
+  }
   if (!who.size) post.reactions.delete(emoji);
   refresh(post, { bumped: new Set([emoji]) });
 }
 
 export function repost(post, accountId, { toggle = false } = {}) {
   if (toggle && post.reposts.has(accountId)) post.reposts.delete(accountId);
-  else post.reposts.add(accountId);
+  else {
+    if (!post.reposts.has(accountId) && toVisitor(post, accountId)) notify({ type: "repost", post, actorId: accountId });
+    post.reposts.add(accountId);
+  }
   refresh(post);
 }
 
@@ -33,9 +44,12 @@ function setTyping(post, accountId, on) {
 
 // Each reply records who it answers (toId), so the thread shows the
 // right 返信先 and replies to replies keep their context.
-function addReply(post, accountId, text, toId = post.authorId) {
-  post.replies.push({ authorId: accountId, toId, text, createdAt: Date.now() });
+function addReply(post, accountId, text, toId = post.authorId, source = "") {
+  const reply = { authorId: accountId, toId, text, createdAt: Date.now(), source };
+  post.replies.push(reply);
+  if (toId === VISITOR.id && accountId !== VISITOR.id) notify({ type: "reply", post, actorId: accountId, text });
   refresh(post, { freshReply: post.replies.length - 1 });
+  return reply;
 }
 
 // Mentions are addressing, not content: the model should not echo a handle.
@@ -44,9 +58,10 @@ const withoutMentions = (text) => text.replace(MENTION, "").replace(/\s+/g, " ")
 const mentionedBots = (text) => [...new Set([...text.matchAll(MENTION)].map((m) => m[1]))]
   .map((handle) => [SELF, ...ALTS].find((account) => account.handle === handle)).filter(Boolean);
 
-// `reply` is the reply being answered; without it the account answers
-// the post itself.
-export async function replyAs(post, account, delay, reply = null) {
+// `reply` is the reply being answered ({ authorId, toId, text,
+// parentText }); without it the account answers the post itself.
+// Resolves to the reply it added, or null.
+export async function replyAs(post, account, delay, reply = null, priority = PRIORITY.visitor) {
   await sleep(delay);
   setTyping(post, account.id, true);
   try {
@@ -58,13 +73,12 @@ export async function replyAs(post, account, delay, reply = null) {
         addressed: reply.toId === account.id || mentionedBots(reply.text).includes(account),
       }
       : { text: withoutMentions(post.text) };
-    const text = await brain.reply(prompt, () => [...post.replies.map((r) => r.text), ...post.drafts]);
+    const { text, source } = await brain.reply(account, prompt, () => [...post.replies.map((r) => r.text), ...post.drafts], priority);
     if (text) post.drafts.push(text);
     await shown;
-    if (text) {
-      post.drafts.splice(post.drafts.indexOf(text), 1);
-      addReply(post, account.id, text, reply ? reply.authorId : post.authorId);
-    }
+    if (!text) return null;
+    post.drafts.splice(post.drafts.indexOf(text), 1);
+    return addReply(post, account.id, text, reply ? reply.authorId : post.authorId, source);
   } finally {
     setTyping(post, account.id, false);
   }
@@ -84,7 +98,7 @@ export function choreograph(post) {
       await sleep(rand(700, 2800));
       react(post, Math.random() < 0.8 ? emoji : "👀", account.id);
     }
-  })();
+  })().catch(console.error);
 
   (async () => {
     const liked = await brain.judge(withoutMentions(post.text));
@@ -97,7 +111,7 @@ export function choreograph(post) {
       await sleep(rand(600, 2200));
     }
     say(`kobajinたちが ${fans.length} 件 👍 しました`);
-  })();
+  })().catch(console.error);
 
   // Anyone the post @mentions answers first.
   const mentioned = mentionedBots(post.text);
@@ -124,5 +138,33 @@ export function visitorReply(post, toId, parentText, text) {
     Promise.all([brain.react(withoutMentions(text)), sleep(rand(900, 2000))])
       .then(([emoji]) => react(post, emoji, toId))
       .catch(console.error);
+  }
+}
+
+// kobajins talk among themselves under a post: someone replies, the
+// author often answers back (an addressed reply, so a question gets an
+// answer), and the exchange sometimes goes a round or two more, or a
+// third kobajin cuts in. Background priority, so the visitor's own
+// replies never wait behind it.
+export async function banter(post, { first = rand(4000, 9000) } = {}) {
+  const author = ACCOUNTS[post.authorId];
+  const replier = shuffle(ALTS.filter((alt) => alt.id !== author.id))[0];
+  const opening = await replyAs(post, replier, first, null, PRIORITY.background);
+  if (!opening) return;
+  let last = { reply: opening, parentText: post.text };
+  let speakers = [author, replier];
+  // Each round: the one who was answered talks back, with fading odds.
+  for (const chance of [0.7, 0.45, 0.25]) {
+    if (Math.random() > chance) break;
+    const [next] = speakers;
+    const answer = await replyAs(post, next, rand(2500, 6000), { ...last.reply, parentText: last.parentText }, PRIORITY.background);
+    if (!answer) break;
+    last = { reply: answer, parentText: last.reply.text };
+    speakers = [speakers[1], speakers[0]];
+  }
+  // Now and then someone else chimes in on the last line.
+  if (Math.random() < 0.25) {
+    const outsider = shuffle(ALTS.filter((alt) => alt.id !== author.id && alt.id !== replier.id))[0];
+    await replyAs(post, outsider, rand(3000, 7000), { ...last.reply, parentText: last.parentText }, PRIORITY.background);
   }
 }
